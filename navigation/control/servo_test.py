@@ -18,18 +18,20 @@ import RPi.GPIO as GPIO
 
 # Set GPIO modes
 GPIO.setmode(GPIO.BCM)
-motor_A_in1 = 2 #non pwm
-motor_A_in2 = 3 # non pwm
 
-motor_B_in1 = 17 # non pwm
-motor_B_in2 = 27 # non pwm
+
+motor_A_in1 = 27 # non pwm 7 from top left
+motor_A_in2 = 17 # non pwm 6 from top left
+
+motor_B_in1 = 2 #non pwm 3 from top left
+motor_B_in2 = 3 # non pwm 2 from top left
 
 # motor_B_in2 = 24
 # motor_B_in1 = 25
 # motor_B_en = 19
 
-motor_enable = 18
-motor_enable2 = 19
+motor_enable = 18 # 6 from top right
+motor_enable2 = 19 # 3 from bottom left
 
 GPIO.setup(motor_A_in1, GPIO.OUT)
 GPIO.setup(motor_A_in2, GPIO.OUT)

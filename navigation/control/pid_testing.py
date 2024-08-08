@@ -17,4 +17,4 @@ for j in range(10):
     print('Counter:',encoder.steps,'Speed:',(encoder.steps)/5.0,'steps per second\n')
     encoder.steps = 0
 
-pwm.value =0 
+pwm.value =0  
