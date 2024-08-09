@@ -14,10 +14,11 @@ MOTOR 1 = LEFT
 MOTOR 2 = RIGHT
 """
 
+type FILL_IN = any 
+
 #------------ setup the robot and the controller --------
 robot = DiffDriveRobot(inertia=5, dt=0.1, drag=1, wheel_radius=0.05, wheel_sep=0.15)
 controller = RobotController(Kp=1,Ki=0.25,wheel_radius=0.05,wheel_sep=0.15)
-
 
 # ----------- setup pins ----------
 # Set GPIO modes
@@ -32,11 +33,11 @@ PIN_MOTOR1_ENABLE = 18
 PIN_MOTOR2_ENABLE = 10
 
 # motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
-PIN_MOTOR1_OUT_A = 4
-PIN_MOTOR1_OUT_B = 
+PIN_MOTOR1_OUT_A = 10
+PIN_MOTOR1_OUT_B = 12
 
-PIN_MOTOR2_OUT_A = 
-PIN_MOTOR2_OUT_B = 
+PIN_MOTOR2_OUT_A = 2
+PIN_MOTOR2_OUT_B = 3
 
 # setup the motor 1 output pins
 GPIO.setup(PIN_MOTOR1_OUT_A, GPIO.IN)
@@ -109,6 +110,8 @@ for i in range(300):
     motor1_pwm1.start(duty_cycle_r)
 
     motor2_pwm1.start(duty_cycle_l)
+
+    
 
     # Log data
     poses.append([x,y,th])
