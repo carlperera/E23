@@ -81,8 +81,6 @@ motor1_enable_pwm.start(100)  # enable pin on motor1 to high
 motor2_enable_pwm.start(100)  # enable pin on motor2 to high 
 
 
-
-
 # Test 1 - move the robot with figure 8s
 plt.figure(figsize=(15,9))
 
@@ -92,10 +90,10 @@ duty_cycle_commands = []
 for i in range(300):
 
     # update the actual robot.wl
-    robot.wr = 0.5*(get_duty_cycle(motor1_out_A) + get_duty_cycle(motor1_out_B))
+    robot.wr = (get_duty_cycle(motor1_out_A) + get_duty_cycle(motor1_out_B))/4
 
     # update the actual robot.wr 
-    robot.wl = 0.5*(get_duty_cycle(motor2_out_A) + get_duty_cycle(motor2_out_B))
+    robot.wl = (get_duty_cycle(motor2_out_A) + get_duty_cycle(motor2_out_B))/4
 
     if i < 100: # drive in circular path (turn left) for 10 s
         duty_cycle_l,duty_cycle_r = controller.drive(0.1,1,robot.wl,robot.wr)
@@ -146,3 +144,4 @@ for i in range(300):
     
     display.clear_output(wait=True)
     display.display(plt.gcf())
+    time.sleep(0.1)
