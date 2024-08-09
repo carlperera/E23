@@ -14,7 +14,7 @@ MOTOR 1 = LEFT
 MOTOR 2 = RIGHT
 """
 
-type FILL_IN = any 
+
 
 #------------ setup the robot and the controller --------
 robot = DiffDriveRobot(inertia=5, dt=0.1, drag=1, wheel_radius=0.05, wheel_sep=0.15)
