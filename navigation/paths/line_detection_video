@@ -1,0 +1,75 @@
+import cv2
+import numpy as np 
+import time
+
+def line_detection(frame):
+    #read frame in grayscale
+    # image = cv2.imread("C:\\Users\\Evelyn\\Downloads\\white line.jpg", 0)
+    _, binaryImg = cv2.threshold(frame, 200, 255, cv2.THRESH_BINARY)
+
+    #get image dimensions for cropping
+    height, width = binaryImg.shape
+
+    #calculate new dimensions to crop to
+    newWidth = width
+    newHeight = int(newWidth * 6 / 16)
+
+    #calculate bounds for cropping
+    cropUpper = height - newHeight
+
+    #crop
+    croppedImg = binaryImg[cropUpper:, :]
+
+    #calculate total number of white pixels in cropped image
+    whitePixels = np.sum(croppedImg == 255)
+
+    #calculate total number of pixels in cropped image
+    totalPixels = croppedImg.size
+
+    #calculate proportion of white pixels
+    whiteProp = whitePixels / totalPixels
+
+    #determine if proportion of white pixels indicates a line
+    if whiteProp > 0.1:
+        return 1, croppedImg  #line
+    else:
+        return 0, croppedImg  #no line
+
+def camera_line_detection():
+    #open camera (using pc default webcam 0 to test)
+    camera = cv2.VideoCapture(0)
+
+    while True:
+        time.sleep(1) #change to whatever
+        #read frame
+        _, frame = camera.read()
+
+        #convert to grayscale
+        gscaleFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        #pass frame into line detection model
+        result, croppedImg = line_detection(gscaleFrame)
+
+        # #show original image
+        # cv2.imshow('Original Frame', frame)
+
+        # #show image after thresholding to white or black
+        # _, binaryImg = cv2.threshold(gscaleFrame, 150, 255, cv2.THRESH_BINARY)
+        # cv2.imshow('Binary Image', binaryImg)
+        
+        cv2.imshow('Cropped Image', croppedImg)
+
+        if result:
+            print("Line detected.")
+        else:
+            print("No line detected.")
+
+        #exit camera when q is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    #release webcam and close windows
+    camera.release()
+    cv2.destroyAllWindows()
+
+camera_line_detection()
