@@ -1,8 +1,10 @@
 import RPi.GPIO as GPIO
 import time
 
+GPIO.setmode(GPIO.BCM)
 
 def get_duty_cycle(pin):
+    
     # Variables to keep track of timing
     high_time = 0
     low_time = 0

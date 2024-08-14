@@ -18,6 +18,9 @@ motor_B_in2 = 24
 motor_enable = 18
 motor_enable2 = 10
 
+
+
+
 GPIO.setup(motor_A_in1, GPIO.OUT)
 GPIO.setup(motor_A_in2, GPIO.OUT)
 
