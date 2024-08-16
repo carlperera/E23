@@ -19,7 +19,6 @@ dir4 = gpiozero.OutputDevice(pin=PIN_MOTOR2_IN2)
 encoder2 = gpiozero.RotaryEncoder(a=PIN_MOTOR2_A_OUT, b=PIN_MOTOR2_B_OUT,max_steps=100000) 
 
 
-
 # LEFT MOTOR (1)
 PIN_MOTOR1_IN1 = 17 # LOW - good
 PIN_MOTOR1_IN2 = 27 # LOW -good 
