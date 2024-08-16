@@ -14,7 +14,10 @@ MOTOR 2 = RIGHT
 """
 
 #------------ setup the robot and the controller --------
-robot = DiffDriveRobot(inertia=5, dt=0.1, drag=1, wheel_radius=0.05, wheel_sep=0.15)
+wheel_sep = (147 + 64)/1000
+wheel_rad = (53/2)/1000
+
+robot = DiffDriveRobot(inertia=5, dt=0.1, drag=1, wheel_radius=wheel_rad, wheel_sep=wheel_sep)
 controller = RobotController(Kp=1,Ki=0.25,wheel_radius=0.05,wheel_sep=0.15)
 
 # ----------- setup pins ----------
@@ -31,11 +34,11 @@ PIN_MOTOR1_ENABLE = 18
 PIN_MOTOR2_ENABLE = 10
 
 # motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
-PIN_MOTOR1_OUT_A = 10
-PIN_MOTOR1_OUT_B = 12
+PIN_MOTOR1_OUT_A = 3
+PIN_MOTOR1_OUT_B = 2 
 
-PIN_MOTOR2_OUT_A = 2
-PIN_MOTOR2_OUT_B = 3
+PIN_MOTOR2_OUT_A = 5
+PIN_MOTOR2_OUT_B = 6
 
 # setup the motor 1 output pins
 GPIO.setup(PIN_MOTOR1_OUT_A, GPIO.IN)
@@ -73,28 +76,33 @@ motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_ENABLE, 1000)
 motor1_enable_pwm.start(100)  # enable pin on motor1 to high 
 motor2_enable_pwm.start(100)  # enable pin on motor2 to high 
 
-def get_duty_cycle(pin):
-    
+def get_duty_cycle(pin, timeout=1.0):
     # Variables to keep track of timing
     high_time = 0
     low_time = 0
-    
-    # Wait for the pin to go high
-    while GPIO.input(pin) == GPIO.LOW:
-        pass  # Wait for the rising edge
-    start_time = time.time()  # Record the start time
 
-    print("here")
+    # Wait for the pin to go high
+    start_time = time.time()
+    while GPIO.input(pin) == GPIO.LOW:
+        if time.time() - start_time >= timeout:
+            return 0.0  # If the pin stays low for too long, return 0% duty cycle
+        pass  # Wait for the rising edge
+    high_start_time = time.time()  # Record the start time for high state
+
     # Measure high time
     while GPIO.input(pin) == GPIO.HIGH:
+        if time.time() - high_start_time >= timeout:
+            return 100.0  # If the pin stays high for too long, return 100% duty cycle
         pass  # Wait for the pin to go low
-    high_time = time.time() - start_time  # Record the duration of high state
+    high_time = time.time() - high_start_time  # Record the duration of high state
 
     # Measure low time
-    start_time = time.time()  # Reset the start time
+    low_start_time = time.time()  # Reset the start time for low state
     while GPIO.input(pin) == GPIO.LOW:
+        if time.time() - low_start_time >= timeout:
+            return (high_time / (high_time + low_time)) * 100  # If the pin stays low for too long, return the current duty cycle
         pass  # Wait for the pin to go high
-    low_time = time.time() - start_time  # Record the duration of low state
+    low_time = time.time() - low_start_time  # Record the duration of low state
 
     # Calculate the duty cycle
     total_time = high_time + low_time
@@ -110,13 +118,18 @@ while True:
         duty_cycle_commands = []
 
         for i in range(300):
-            print(i)
-        
+    
             # update the actual robot.wl
-            robot.wr = (get_duty_cycle(PIN_MOTOR1_OUT_A) + get_duty_cycle(PIN_MOTOR1_OUT_B))/4
+            motor1_out_a_temp = get_duty_cycle(PIN_MOTOR1_OUT_A) 
+            motor1_out_b_temp = get_duty_cycle(PIN_MOTOR1_OUT_B)
+
+            motor2_out_a_temp = get_duty_cycle(PIN_MOTOR2_OUT_A)
+            motor2_out_b_temp = get_duty_cycle(PIN_MOTOR2_OUT_B)
+    
+            robot.wr = (motor1_out_a_temp + motor1_out_b_temp)/4
 
             # update the actual robot.wr 
-            robot.wl = (get_duty_cycle(PIN_MOTOR2_OUT_A) + get_duty_cycle(PIN_MOTOR2_OUT_B))/4
+            robot.wl = (motor2_out_a_temp + motor2_out_b_temp)/4
 
             if i < 100: # drive in circular path (turn left) for 10 s
                 duty_cycle_l,duty_cycle_r = controller.drive(0.1,1,robot.wl,robot.wr)
@@ -127,15 +140,23 @@ while True:
             
             # Simulate robot motion - send duty cycle command to robot - simulated one 
             x,y,th = robot.pose_update(duty_cycle_l,duty_cycle_r)
-            
-            # actual drive - turn duty_cycle_l, duty_cycle_l into pwm signals and feed as inputs into the encoder inputs 
-            motor1_pwm1.start(duty_cycle_r)
 
-            motor2_pwm1.start(duty_cycle_l)
+            print(f"{x},{y},{th}")
+            # actual drive - turn duty_cycle_l, duty_cycle_l into pwm signals and feed as inputs into the encoder inputs
+            if duty_cycle_l > 0:
+                motor1_pwm1.start(duty_cycle_l)
+            else:
+                motor1_pwm2.start(abs(duty_cycle_l))
 
-        
+            if duty_cycle_r > 0:
+                motor2_pwm1.start(duty_cycle_r)
+            else:
+                motor2_pwm2.start(abs(duty_cycle_r))
+
+
             # Log data
             poses.append([x,y,th])
+        
             duty_cycle_commands.append([duty_cycle_l,duty_cycle_r])
             velocities.append([robot.wl,robot.wr])
 
