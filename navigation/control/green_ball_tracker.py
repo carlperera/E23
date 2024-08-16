@@ -44,11 +44,14 @@ class Tennis_ball_detect(ABC):
         pass
 
     def line_detection(self, frame):
-    
-        gray = frame
+        global averaged_out_bounds
+        averaged_out_bounds = True
+        bounds_averager = [None] * 10
+        bounds_averager_counter = 0
+        mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # Apply a threshold to keep only close-to-white values
         # Values close to 255 (white) will be kept, others will be set to black
-        _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+        _, mask = cv2.threshold(mask, 220, 255, cv2.THRESH_BINARY) # Can adjust threshold
 
         # Apply Gaussian blur to the masked image
         kernel_size = 5
@@ -77,19 +80,68 @@ class Tennis_ball_detect(ABC):
         if lines is not None:
             for line in lines:
                 for x1, y1, x2, y2 in line:
+                    cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
                     cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                    
+        # Check the y coordinate directly above the max ball
+        if max_ball is not None:
+            y_below = max_ball.y -1  # Slightly above the ball
+            x_pos = max_ball.x
+
+            # Check if there is a line detected directly above the ball
+            out_bounds = False
+            if lines is not None:
+                for line in lines:
+                    for x1, y1, x2, y2 in line:
+                        
+                        # print(min(y1,y2), line)
+                        if min(y1, y2) > y_below : # we are checking the line in vertical direction at where the ball is
+                            # # Check if the x position is within the line's segment. Coordinate system is the bigger the y, the lower it is
+                            if min(x1, x2) <= x_pos <= max(x1, x2): # making sure that the ball is between this line's x coords
+                                out_bounds = True
+                                cv2.line(line_image, (x1,y1), (x2,y2), (0,0,255), 5)
+                                break
+                            else: # ball is not actually out of bounds
+                                out_bounds = False 
+                    
+                    if out_bounds:
+                        bounds_averager[bounds_averager_counter] = 0
+                        out_bounds = True
+                        bounds_averager_counter+=1 
+                        # print("ball out of bounds")
+                        # break
+                    else:
+                        bounds_averager[bounds_averager_counter] = 1
+                        bounds_averager_counter+=1 
+                        # print("Ball within bounds!")
+                    if bounds_averager_counter == len(bounds_averager)-1: # resetting counter
+                        bounds_averager_counter = 0
+                        average_val = sum(x for x in bounds_averager if x is not None)
+                        print(average_val)
+                        if average_val >= 8:
+                            averaged_out_bounds = True
+                            print("ball within bounds!")
+                        else:
+                            averaged_out_bounds = False
+                            print("ball out of bounds")
+                    
+                
+
 
         # Combine the original frame with the line image
         if len(frame.shape) == 3:
             lines_edges = cv2.addWeighted(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), 0.8, line_image, 1, 0)
         else:
             lines_edges = cv2.addWeighted(mask, 0.8, line_image, 1, 0)
-
+        cv2.imshow("Line Detection", line_image)
         return lines_edges
+    
 
     
     # Tennis ball tracking function
     def track_balls(self):
+        global max_ball
+        max_ball = None
         capWidth = 1280
         capHeight = 960
         camera = cv2.VideoCapture(0, cv2.CAP_DSHOW) # REMOVE CAP_DSHOW ON THE RPI
@@ -111,8 +163,8 @@ class Tennis_ball_detect(ABC):
             if not ret:
                 break
             #convert to grayscale
-            gscaleFrame = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            croppedImg = self.line_detection(gscaleFrame)
+            
+            line_detected_img = self.line_detection(image)
 
 
             # Apply Gaussian blur to the image to make the tennis balls lines smudge
@@ -156,6 +208,7 @@ class Tennis_ball_detect(ABC):
                     # centroidq
 
                     c = cnts
+                    global radius
                     ((x, y), radius) = cv2.minEnclosingCircle(c)
                     M = cv2.moments(c)
                     center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
@@ -185,7 +238,7 @@ class Tennis_ball_detect(ABC):
          
                         
             
-                        
+            
 
             if ball_list:
                 max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -205,6 +258,8 @@ class Tennis_ball_detect(ABC):
                         inCentre = 3  # Right third
 
                     print(f"inCentre: {inCentre}")
+
+                    
                 
             # time.sleep(0.1)
 
@@ -212,7 +267,7 @@ class Tennis_ball_detect(ABC):
             # show the frame to our screen
             cv2.imshow("Masked frame", mask)
             cv2.imshow("Webcam", image)
-            cv2.imshow('Line detected Image', croppedImg)
+            # cv2.imshow('Line detected Image', line_detected_img)
 
             if cv2.waitKey(1) & 0xFF is ord('q'):
                 break
