@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
 import cv2
 import numpy as np
+import time
+
+# CHANGE FOR CALIBRATION: radius, v1_min, v2_min, v3_min
 
 class Tennis_ball_detect(ABC):
     __ball_list = []
     windowWidth = 0
     windowHeight = 0
+
     def __init__(self):
         __ball_list = self.__ball_list
         windowHeight = self.windowHeight
@@ -38,12 +42,67 @@ class Tennis_ball_detect(ABC):
     @abstractmethod
     def get_ball_coordinates(self):
         pass
+
+    def line_detection(self, frame):
+    
+        gray = frame
+        # Apply a threshold to keep only close-to-white values
+        # Values close to 255 (white) will be kept, others will be set to black
+        _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+
+        # Apply Gaussian blur to the masked image
+        kernel_size = 5
+        blur_gray = cv2.GaussianBlur(mask, (kernel_size, kernel_size), 0)
+
+        # Perform Canny edge detection on the blurred image
+        low_threshold = 50
+        high_threshold = 150
+        edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+
+        # Define the Hough transform parameters
+        rho = 1  # Distance resolution in pixels of the Hough grid
+        theta = np.pi / 180  # Angular resolution in radians of the Hough grid
+        threshold = 15  # Minimum number of votes (intersections in Hough grid cell)
+        min_line_length = 50  # Minimum number of pixels making up a line
+        max_line_gap = 20  # Maximum gap in pixels between connectable line segments
+
+        # Create an empty image to draw lines on
+        line_image = np.zeros_like(frame)
+
+        # Perform Hough Line Transform to detect lines
+        lines = cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
+                                min_line_length, max_line_gap)
+
+        # Draw the detected lines on the line_image
+        if lines is not None:
+            for line in lines:
+                for x1, y1, x2, y2 in line:
+                    cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
+        # Combine the original frame with the line image
+        if len(frame.shape) == 3:
+            lines_edges = cv2.addWeighted(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), 0.8, line_image, 1, 0)
+        else:
+            lines_edges = cv2.addWeighted(mask, 0.8, line_image, 1, 0)
+
+        return lines_edges
+
+    
     # Tennis ball tracking function
     def track_balls(self):
-        camera = cv2.VideoCapture(0)
+        capWidth = 1280
+        capHeight = 960
+        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW) # REMOVE CAP_DSHOW ON THE RPI
+        camera.set(cv2.CAP_PROP_FRAME_WIDTH, capWidth) #1280
+        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, capHeight) #550
+        # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
+        # cv2.namedWindow("Webcam", cv2.WINDOW_NORMAL)
         global close_signal
         close_signal = False
+        global inCentre
+        inCentre = 0
         while close_signal==False:
+
 
             ret, image = camera.read()
             self.windowHeight = image.shape[1]
@@ -51,11 +110,18 @@ class Tennis_ball_detect(ABC):
 
             if not ret:
                 break
+            #convert to grayscale
+            gscaleFrame = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            croppedImg = self.line_detection(gscaleFrame)
 
-            frame_to_thresh = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+            # Apply Gaussian blur to the image to make the tennis balls lines smudge
+            blurred_image = cv2.GaussianBlur(image, (31, 31), 0)
+
+            frame_to_thresh = cv2.cvtColor(blurred_image, cv2.COLOR_BGR2HSV) # HSV goes 0 to 179 for RYGBP for every 30, S and V are 0-255
             #v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [40, 70, 70, 80, 200, 200]
-            v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [35,27,86, 80, 200, 255]
-            thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max))
+            v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [25, 45, 70, 80, 255, 255]
+            thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max)) # The cv2.inRange function checks each pixel in the frame_to_thresh image to see if its HSV values fall within the specified range. If a pixel's HSV values are within the range, the corresponding pixel in the thresh image is set to 255 (white). Otherwise, it is set to 0 (black).
 
             kernel = np.ones((5, 5), np.uint8)
             mask = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -67,7 +133,7 @@ class Tennis_ball_detect(ABC):
 
             center = None
             maxarea = 170000.0
-            minare = 3000.0
+            minare = 800.0
             ball_number = 0
             ball_list = []
 
@@ -93,9 +159,8 @@ class Tennis_ball_detect(ABC):
                     ((x, y), radius) = cv2.minEnclosingCircle(c)
                     M = cv2.moments(c)
                     center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
                     # only proceed if the radius meets a minimum size
-                    if radius > 10:
+                    if radius > 7: # CHANGE THIS VALUE FOR CALIBRATION
                         # draw the circle and centroid on the frame,
                         # then update the list of tracked points
                         theball = self.Tennis_ball(pixels,int(x),int(y),ball_number)
@@ -110,13 +175,44 @@ class Tennis_ball_detect(ABC):
                         cv2.putText(image, "(" + str(center[0]) + "," + str(center[1]) + ")",
                                     (center[0] + 10, center[1] + 15),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
-                        cv2.putText(image, "Pixel area" + str(pixels), (center[0] + 10, center[1] + 25),
+                        cv2.putText(image, "Pixel area: " + str(pixels), (center[0] + 10, center[1] + 25),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+                        cv2.putText(image, "Radius: " + str(radius), (center[0] + 10, center[1] + 40),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+                        # Optional: Draw vertical lines for center region boundaries
+                        cv2.line(image , (int(capWidth * 0.4), 0), (int(capWidth * 0.4), capHeight), (0, 255, 255), 2)  # Top center boundary
+                        cv2.line(image, (int(capWidth * 0.6), 0), (int(capWidth * 0.6), capHeight), (0, 255, 255), 2)  # Bottom center boundary
+         
+                        
+            
+                        
+
+            if ball_list:
+                max_ball = max(ball_list, key=lambda ball: ball.pixels)
+
+                if max_ball:
+                    cv2.circle(image, (int(max_ball.x), int(max_ball.y)), int(radius), (0, 0, 255), 2)
+                    print("Max ball is ball: ",max_ball.ball_index)
+
+                    left_band = capWidth *0.4
+                    right_band = capWidth * 0.6
+
+                    if max_ball.x < left_band:
+                        inCentre = 2  # Left third
+                    elif left_band <= max_ball.x <= right_band:
+                        inCentre = 1  # Middle third
+                    else:
+                        inCentre = 3  # Right third
+
+                    print(f"inCentre: {inCentre}")
+                
+            # time.sleep(0.1)
 
 
             # show the frame to our screen
-
+            cv2.imshow("Masked frame", mask)
             cv2.imshow("Webcam", image)
+            cv2.imshow('Line detected Image', croppedImg)
 
             if cv2.waitKey(1) & 0xFF is ord('q'):
                 break

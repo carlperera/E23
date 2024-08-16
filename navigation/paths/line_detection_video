@@ -37,10 +37,10 @@ def line_detection(frame):
 
 def camera_line_detection():
     #open camera (using pc default webcam 0 to test)
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(1)
 
     while True:
-        time.sleep(1) #change to whatever
+        time.sleep(0.033) #change to whatever
         #read frame
         _, frame = camera.read()
 
