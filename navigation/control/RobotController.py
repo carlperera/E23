@@ -19,6 +19,10 @@ class RobotController:
         
         
     def drive(self,v_desired,w_desired,wl,wr):
+        """
+        takes in desired v and desirerd w, and the current radial speeds of left and right, and outputs the 
+        duty cycles for both wheels to give desired speeds (to adjust)
+        """
         
         wl_desired = (v_desired + self.l*w_desired/2)/self.r
         wr_desired = (v_desired - self.l*w_desired/2)/self.r
