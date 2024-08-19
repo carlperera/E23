@@ -1,3 +1,5 @@
+import numpy as np
+
 class TentaclePlanner:
     
     def __init__(self,obstacles,dt=0.1,steps=5,alpha=1,beta=0.1):
