@@ -14,6 +14,11 @@ PIN_MOTOR1_PWM_ENABLE = 18 # LOW - good
 PIN_MOTOR1_A_OUT = 21# LOW - good 
 PIN_MOTOR1_B_OUT = 20 # LOW - good
 
+
+# CONSTANTS
+LOW = GPIO.LOW
+HIGH = GPIO.HIGH
+
 def interrupt_service_routine(channel) -> None:
     """ISR for the motor encoder
 
@@ -30,7 +35,7 @@ def interrupt_service_routine(channel) -> None:
     # 00 --> 01 --> 11 --> 10 is anti clock wise
     # 11 --> 01 --> 00 --> 10 is clock wise
     # increment or decrement count variable
-    if (prevA == GPIO.LOW and prevB == GPIO.LOW and a == GPIO.LOW and b == GPIO.HIGH) or \
+    if (prevA == LOW and prevB == LOW and a == LOW and b == LOW) or \
        (prevA == GPIO.LOW and prevB == GPIO.HIGH and a == GPIO.HIGH and b == GPIO.HIGH) or \
        (prevA == GPIO.HIGH and prevB == GPIO.HIGH and a == GPIO.HIGH and b == GPIO.LOW) or \
        (prevA == GPIO.HIGH and prevB == GPIO.LOW and a == GPIO.LOW and b == GPIO.LOW):
