@@ -14,13 +14,12 @@ MOTOR 1 = LEFT
 MOTOR 2 = RIGHT
 """
 
-type FILL_IN = any 
-
 #------------ setup the robot and the controller --------
 robot = DiffDriveRobot(inertia=5, dt=0.1, drag=1, wheel_radius=0.05, wheel_sep=0.15)
 controller = RobotController(Kp=1,Ki=0.25,wheel_radius=0.05,wheel_sep=0.15)
 
 # ----------- setup pins ----------
+
 # Set GPIO modes
 GPIO.setmode(GPIO.BCM)
 PIN_MOTOR_A_IN1 = 17
@@ -32,10 +31,12 @@ PIN_MOTOR_B_IN2 = 24
 PIN_MOTOR1_ENABLE = 18
 PIN_MOTOR2_ENABLE = 10
 
-# motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
+# --- motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm ---
+
+# motor 1 output feedback pins 
 PIN_MOTOR1_OUT_A = 10
 PIN_MOTOR1_OUT_B = 12
-
+# motor 2 output feedbacks pins
 PIN_MOTOR2_OUT_A = 2
 PIN_MOTOR2_OUT_B = 3
 
@@ -54,15 +55,15 @@ motor2_out_A = GPIO.PWM(PIN_MOTOR2_OUT_A, 1000)
 motor2_out_B = GPIO.PWM(PIN_MOTOR2_OUT_B, 1000)
 
 # motor A in 
-GPIO.setup(PIN_MOTOR_A_IN1, GPIO.OUT)
-GPIO.setup(PIN_MOTOR_A_IN2, GPIO.OUT)
+GPIO.setup(PIN_MOTOR_A_IN1, GPIO.OUT) # forward dir
+GPIO.setup(PIN_MOTOR_A_IN2, GPIO.OUT) # backward dir
 
 # motor B in 
-GPIO.setup(PIN_MOTOR_B_IN1, GPIO.OUT)
-GPIO.setup(PIN_MOTOR_B_IN2, GPIO.OUT)
+GPIO.setup(PIN_MOTOR_B_IN1, GPIO.OUT) # forward dir
+GPIO.setup(PIN_MOTOR_B_IN2, GPIO.OUT) # backward dir
 
-# set pin modes
-GPIO.setup(PIN_MOTOR1_ENABLE, GPIO.OUT)
+# motor enable pins - set pin modes
+GPIO.setup(PIN_MOTOR1_ENABLE, GPIO.OUT) 
 GPIO.setup(PIN_MOTOR2_ENABLE, GPIO.OUT)
 
 # motor1 pwms
