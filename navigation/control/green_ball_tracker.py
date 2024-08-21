@@ -9,11 +9,16 @@ class Tennis_ball_detect(ABC):
     __ball_list = []
     windowWidth = 0
     windowHeight = 0
+    max_ball = None
+    averaged_out_bounds = None
+    inCentre = 0 # middle,L,R thirds = 1,2,3
 
     def __init__(self):
         __ball_list = self.__ball_list
         windowHeight = self.windowHeight
         windowWidth = self.windowWidth
+        max_ball_x = None
+        max_ball_y = None
 
     # Tennis ball class for define every ball as object
     class Tennis_ball:
@@ -44,17 +49,16 @@ class Tennis_ball_detect(ABC):
         pass
 
     def line_detection(self, frame):
-        global averaged_out_bounds
+        
         height = frame.shape[0]
         frame = frame[height // 2:, :]
-        averaged_out_bounds = True
         
         bounds_averager_counter = 0
         
         mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # Apply a threshold to keep only close-to-white values
         # Values close to 255 (white) will be kept, others will be set to black
-        _, mask = cv2.threshold(mask, 220, 255, cv2.THRESH_BINARY) # Can adjust threshold
+        _, mask = cv2.threshold(mask, 200, 255, cv2.THRESH_BINARY) # Can adjust threshold
 
         # Apply Gaussian blur to the masked image
         kernel_size = 5
@@ -91,12 +95,12 @@ class Tennis_ball_detect(ABC):
                         # cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
                         cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
           
-            bounds_averager = [None] * len(valid_line_list)    
+            bounds_averager = [None] * 10    
         
         # Check the y coordinate directly above the max ball
-        if max_ball is not None:
-            y_below = max_ball.y -1  # Slightly above the ball
-            x_pos = max_ball.x
+        if self.max_ball is not None:
+            y_below = self.max_ball.y -1  # Slightly above the ball
+            x_pos = self.max_ball.x
 
             # Check if there is a line detected directly above the ball
             out_bounds = False
@@ -129,10 +133,10 @@ class Tennis_ball_detect(ABC):
                         average_val = sum(x for x in bounds_averager if x is not None)
                         # print(average_val)
                         if average_val >= 0.8*len(bounds_averager):
-                            averaged_out_bounds = True
+                            self.averaged_out_bounds = True
                             print("ball within bounds!")
                         else:
-                            averaged_out_bounds = False
+                            self.averaged_out_bounds = False
                             print("ball out of bounds")
                     
                 
@@ -150,19 +154,17 @@ class Tennis_ball_detect(ABC):
     
     # Tennis ball tracking function
     def track_balls(self):
-        global max_ball
-        max_ball = None
+    
         capWidth = 1280
         capHeight = 960
-        camera = cv2.VideoCapture(0) # REMOVE CAP_DSHOW ON THE RPI
+        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW) # REMOVE cv2.CAP_DSHOW ON THE RPI
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, capWidth) #1280
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, capHeight) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
         # cv2.namedWindow("Webcam", cv2.WINDOW_NORMAL)
         global close_signal
         close_signal = False
-        global inCentre
-        inCentre = 0
+
         while close_signal==False:
 
 
@@ -251,21 +253,21 @@ class Tennis_ball_detect(ABC):
             
 
             if ball_list:
-                max_ball = max(ball_list, key=lambda ball: ball.pixels)
+                self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
 
-                if max_ball:
-                    cv2.circle(image, (int(max_ball.x), int(max_ball.y)), int(radius), (0, 0, 255), 2)
+                if self.max_ball:
+                    cv2.circle(image, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                     # print("Max ball is ball: ",max_ball.ball_index)
 
                     left_band = capWidth *0.4
                     right_band = capWidth * 0.6
 
-                    if max_ball.x < left_band:
-                        inCentre = 2  # Left third
-                    elif left_band <= max_ball.x <= right_band:
-                        inCentre = 1  # Middle third
+                    if self.max_ball.x < left_band:
+                        self.inCentre = 2  # Left third
+                    elif left_band <= self.max_ball.x <= right_band:
+                        self.inCentre = 1  # Middle third
                     else:
-                        inCentre = 3  # Right third
+                        self.inCentre = 3  # Right third
 
                     # print(f"inCentre: {inCentre}")
 
