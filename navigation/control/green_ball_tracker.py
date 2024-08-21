@@ -45,9 +45,12 @@ class Tennis_ball_detect(ABC):
 
     def line_detection(self, frame):
         global averaged_out_bounds
+        height = frame.shape[0]
+        frame = frame[height // 2:, :]
         averaged_out_bounds = True
-        bounds_averager = [None] * 10
+        
         bounds_averager_counter = 0
+        
         mask = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # Apply a threshold to keep only close-to-white values
         # Values close to 255 (white) will be kept, others will be set to black
@@ -78,11 +81,18 @@ class Tennis_ball_detect(ABC):
 
         # Draw the detected lines on the line_image
         if lines is not None:
+            valid_line_list = []
+            
             for line in lines:
                 for x1, y1, x2, y2 in line:
-                    cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
-                    cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
-                    
+                    if (x2-x1 > 100) or (y2-y1 > 100): # valid lines > 100 pixels wide checking that the line isn't on the tennis ball itself, filtering out short lines (court lines are long)
+                        valid_line_list.append(line)
+
+                        # cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                        cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+          
+            bounds_averager = [None] * len(valid_line_list)    
+        
         # Check the y coordinate directly above the max ball
         if max_ball is not None:
             y_below = max_ball.y -1  # Slightly above the ball
@@ -91,15 +101,15 @@ class Tennis_ball_detect(ABC):
             # Check if there is a line detected directly above the ball
             out_bounds = False
             if lines is not None:
-                for line in lines:
+                for line in valid_line_list:
                     for x1, y1, x2, y2 in line:
                         
                         # print(min(y1,y2), line)
-                        if min(y1, y2) > y_below : # we are checking the line in vertical direction at where the ball is
+                        if min(y1, y2) > y_below - 960/2 : # we are checking the line in vertical direction at where the ball is
                             # # Check if the x position is within the line's segment. Coordinate system is the bigger the y, the lower it is
                             if min(x1, x2) <= x_pos <= max(x1, x2): # making sure that the ball is between this line's x coords
                                 out_bounds = True
-                                cv2.line(line_image, (x1,y1), (x2,y2), (0,0,255), 5)
+                                # cv2.line(frame, (x1,y1), (x2,y2), (0,0,255), 5)
                                 break
                             else: # ball is not actually out of bounds
                                 out_bounds = False 
@@ -117,8 +127,8 @@ class Tennis_ball_detect(ABC):
                     if bounds_averager_counter == len(bounds_averager)-1: # resetting counter
                         bounds_averager_counter = 0
                         average_val = sum(x for x in bounds_averager if x is not None)
-                        print(average_val)
-                        if average_val >= 8:
+                        # print(average_val)
+                        if average_val >= 0.8*len(bounds_averager):
                             averaged_out_bounds = True
                             print("ball within bounds!")
                         else:
@@ -245,7 +255,7 @@ class Tennis_ball_detect(ABC):
 
                 if max_ball:
                     cv2.circle(image, (int(max_ball.x), int(max_ball.y)), int(radius), (0, 0, 255), 2)
-                    print("Max ball is ball: ",max_ball.ball_index)
+                    # print("Max ball is ball: ",max_ball.ball_index)
 
                     left_band = capWidth *0.4
                     right_band = capWidth * 0.6
@@ -257,7 +267,7 @@ class Tennis_ball_detect(ABC):
                     else:
                         inCentre = 3  # Right third
 
-                    print(f"inCentre: {inCentre}")
+                    # print(f"inCentre: {inCentre}")
 
                     
                 
