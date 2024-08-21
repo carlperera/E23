@@ -71,9 +71,9 @@ motor2_enable_pwm.start(100)
 
 def motor1_A_callback():
     global counts_motor1, last_state1_A, dir_motor1
+    
     if GPIO.input(PIN_MOTOR1_A_OUT) == GPIO.HIGH and last_state1_A == GPIO.LOW:
-
-
+        if GPIO.input
 
 def motor1_B_callback():
     global counts_motor1, last_state1_B, dir_motor1

@@ -14,6 +14,8 @@ dir2 = gpiozero.OutputDevice(pin=PIN_MOTOR1_IN2)
 encoder1 = gpiozero.RotaryEncoder(a=PIN_MOTOR1_A_OUT, b=PIN_MOTOR1_B_OUT,max_steps=100000) 
 # This class has a lot more functionality,so worth reading up on it
 
+
+
 #  Step through duty cycle values, slowly increasing the speed and changing the direction of motion
 encoder1.steps = 0
 for j in range(10):
