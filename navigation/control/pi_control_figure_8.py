@@ -7,6 +7,9 @@ import gpiozero
 from gpiozero import Motor
 import time
 import RPi.GPIO as GPIO
+import math
+
+WHEEL_RADIUS = 53.87/1000 # in metres
 
 """
 MOTOR 1 = LEFT 
@@ -77,41 +80,6 @@ motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_ENABLE, 1000)
 motor1_enable_pwm.start(100)  # enable pin on motor1 to high 
 motor2_enable_pwm.start(100)  # enable pin on motor2 to high 
 
-def get_duty_cycle(pin, timeout=1.0):
-    # Variables to keep track of timing
-    high_time = 0
-    low_time = 0
-
-    # Wait for the pin to go high
-    start_time = time.time()
-    while GPIO.input(pin) == GPIO.LOW:
-        if time.time() - start_time >= timeout:
-            return 0.0  # If the pin stays low for too long, return 0% duty cycle
-        pass  # Wait for the rising edge
-    high_start_time = time.time()  # Record the start time for high state
-
-    # Measure high time
-    while GPIO.input(pin) == GPIO.HIGH:
-        if time.time() - high_start_time >= timeout:
-            return 100.0  # If the pin stays high for too long, return 100% duty cycle
-        pass  # Wait for the pin to go low
-    high_time = time.time() - high_start_time  # Record the duration of high state
-
-    # Measure low time
-    low_start_time = time.time()  # Reset the start time for low state
-    while GPIO.input(pin) == GPIO.LOW:
-        if time.time() - low_start_time >= timeout:
-            return (high_time / (high_time + low_time)) * 100  # If the pin stays low for too long, return the current duty cycle
-        pass  # Wait for the pin to go high
-    low_time = time.time() - low_start_time  # Record the duration of low state
-
-    # Calculate the duty cycle
-    total_time = high_time + low_time
-    duty_cycle = (high_time / total_time) * 100  # Convert to percentage
-
-    return duty_cycle
-
-
 while True:
     try:
         poses = []
@@ -120,17 +88,15 @@ while True:
 
         for i in range(300):
     
-            # update the actual robot.wl
-            motor1_out_a_temp = get_duty_cycle(PIN_MOTOR1_OUT_A) 
-            motor1_out_b_temp = get_duty_cycle(PIN_MOTOR1_OUT_B)
-
-            motor2_out_a_temp = get_duty_cycle(PIN_MOTOR2_OUT_A)
-            motor2_out_b_temp = get_duty_cycle(PIN_MOTOR2_OUT_B)
+            motor1_rpms = 
+            motor2_rpms = 
     
-            robot.wr = (motor1_out_a_temp + motor1_out_b_temp)/4
+            robot.wl = motor1_rpms*2*math.pi/60
+
+
 
             # update the actual robot.wr 
-            robot.wl = (motor2_out_a_temp + motor2_out_b_temp)/4
+            robot.wl = motor2_rpms*2*math.pi/60
 
             if i < 100: # drive in circular path (turn left) for 10 s
                 duty_cycle_l,duty_cycle_r = controller.drive(0.1,1,robot.wl,robot.wr)

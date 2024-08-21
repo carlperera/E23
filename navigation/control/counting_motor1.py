@@ -15,14 +15,6 @@ PIN_MOTOR1_PWM_ENABLE = 18 # LOW
 PIN_MOTOR1_A_OUT = 21# LOW 
 PIN_MOTOR1_B_OUT = 20 # LOW 
 
-# MOTOR 2 (right)
-PIN_MOTOR2_IN1 = 23 # LOW - good
-PIN_MOTOR2_IN2 = 24 # LOW -good 
-PIN_MOTOR2_PWM_ENABLE = 9 # LOW - good 
-PIN_MOTOR2_A_OUT = 14# LOW - good 
-PIN_MOTOR2_B_OUT = 15 # LOW - good
-
-
 
 # CONSTANTS
 LOW = GPIO.LOW
@@ -38,8 +30,8 @@ def interrupt_service_routine(channel) -> None:
     global prevA, prevB, count
 
 
-    a = GPIO.input(PIN_MOTOR2_A_OUT)
-    b = GPIO.input(PIN_MOTOR2_B_OUT)
+    a = GPIO.input(PIN_MOTOR1_A_OUT)
+    b = GPIO.input(PIN_MOTOR1_B_OUT)
 
     # do teh logic:
     # 00 --> 01 --> 11 --> 10 is anti clock wise
@@ -71,61 +63,35 @@ if __name__ == "__main__":
     
     # """ MOTOR 1 (left)"""
 
-    # GPIO.setup(PIN_MOTOR1_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    # GPIO.setup(PIN_MOTOR1_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(PIN_MOTOR1_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(PIN_MOTOR1_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-    # GPIO.setup(PIN_MOTOR1_IN1, GPIO.OUT)
-    # GPIO.setup(PIN_MOTOR1_IN2, GPIO.OUT)
-    # GPIO.setup(PIN_MOTOR1_PWM_ENABLE, GPIO.OUT)
+    GPIO.setup(PIN_MOTOR1_IN1, GPIO.OUT)
+    GPIO.setup(PIN_MOTOR1_IN2, GPIO.OUT)
+    GPIO.setup(PIN_MOTOR1_PWM_ENABLE, GPIO.OUT)
 
-    # motor1_enable_pwm = GPIO.PWM(PIN_MOTOR1_PWM_ENABLE, 1000)
+    motor1_enable_pwm = GPIO.PWM(PIN_MOTOR1_PWM_ENABLE, 1000)
 
-    # motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
-    # motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
+    motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
+    motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
     
-    # motor1_enable_pwm.start(100) 
-    # motor1_in1.start(100)
+    motor1_enable_pwm.start(100) 
+    motor1_in1.start(100)
     
-    # # set the callback function to be called:
-    # GPIO.add_event_detect(
-    #     PIN_MOTOR1_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
-    # )
-    # GPIO.add_event_detect(
-    #     PIN_MOTOR1_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
-    # )
-
-
-
-
-    # """ MOTOR 2 (right)"""
-    GPIO.setup(PIN_MOTOR2_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    GPIO.setup(PIN_MOTOR2_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-    GPIO.setup(PIN_MOTOR2_IN1, GPIO.OUT)
-    GPIO.setup(PIN_MOTOR2_IN2, GPIO.OUT)
-    GPIO.setup(PIN_MOTOR2_PWM_ENABLE, GPIO.OUT)
-
-    motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_PWM_ENABLE, 1000)
-
-    motor2_in1 = GPIO.PWM(PIN_MOTOR2_IN1, 1000)
-    motor2_in2 = GPIO.PWM(PIN_MOTOR2_IN2, 1000)
-    
-    motor2_enable_pwm.start(100) 
-    motor2_in1.start(100)
-
-   
     # set the callback function to be called:
     GPIO.add_event_detect(
-        PIN_MOTOR2_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+        PIN_MOTOR1_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
     )
     GPIO.add_event_detect(
-        PIN_MOTOR2_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+        PIN_MOTOR1_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
     )
+
 
     timeInterval = 0.5  # calculate speed every 0.5 seconds
 
-    try:
-        while True:
+    
+    while True:
+        try:
             # calculate motor speed:
             # revs of the motor shaft:
             revs = count / (CPR * GEAR_RATIO)
@@ -133,19 +99,19 @@ if __name__ == "__main__":
             # convert revolutions to rpm:
             rpm = (revs / timeInterval) * 60
 
+            print(f"RPM = {rpm:.2f} RPM, count = {count: .2f}")
+
             # reset the encoder count to zero (so the past encoder counts dont affect the calculation of the next rpm)
             count = 0
 
-            print(f"The skibidi rizz is currently {rpm:.2f} RPM")
-
-            # honk shoo honk shoo
+            # sleep
             time.sleep(timeInterval)
             
-    except KeyboardInterrupt:
-        motor1_in1.stop()
-        motor1_in2.stop()
-        # motor2_in1.stop()
-        # motor2_in2.stop()
+        except KeyboardInterrupt:
+            motor1_in1.stop()
+            motor1_in2.stop()
+        
 
-        GPIO.cleanup()
-        print("Done")
+            GPIO.cleanup()
+            print("Done")
+            break

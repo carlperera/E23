@@ -20,23 +20,23 @@ class DiffDriveRobot:
         self.l = wheel_sep
     
     # # Should be replaced by motor encoder measurement which measures how fast wheel is turning
-    # def motor_simulator(self,w,duty_cycle):
-    #     """
-    #     Args:
-    #         :w - current speed
-    #         :duty cycle - the measured duty cycle?
-    #     """
+    def motor_simulator(self,w,duty_cycle):
+        """
+        Args:
+            :w - current speed
+            :duty cycle - the measured duty cycle?
+        """
         
-    #     torque = self.I*duty_cycle
+        torque = self.I*duty_cycle
         
-    #     if (w > 0):
-    #         w = min(w + self.dt*(torque - self.d*w),3)
-    #     elif (w < 0):
-    #         w = max(w + self.dt*(torque - self.d*w),-3)
-    #     else:
-    #         w = w + self.dt*(torque)
+        if (w > 0):
+            w = min(w + self.dt*(torque - self.d*w),3)
+        elif (w < 0):
+            w = max(w + self.dt*(torque - self.d*w),-3)
+        else:
+            w = w + self.dt*(torque)
         
-    #     return w
+        return w
         
     # Veclocity motion model
     def base_velocity(self,wl,wr):
