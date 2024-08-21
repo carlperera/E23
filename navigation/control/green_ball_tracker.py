@@ -73,7 +73,7 @@ class Tennis_ball_detect(ABC):
         rho = 1  # Distance resolution in pixels of the Hough grid
         theta = np.pi / 180  # Angular resolution in radians of the Hough grid
         threshold = 15  # Minimum number of votes (intersections in Hough grid cell)
-        min_line_length = 50  # Minimum number of pixels making up a line
+        min_line_length = 100  # Minimum number of pixels making up a line
         max_line_gap = 20  # Maximum gap in pixels between connectable line segments
 
         # Create an empty image to draw lines on
@@ -92,10 +92,10 @@ class Tennis_ball_detect(ABC):
                     if (x2-x1 > 100) or (y2-y1 > 100): # valid lines > 100 pixels wide checking that the line isn't on the tennis ball itself, filtering out short lines (court lines are long)
                         valid_line_list.append(line)
 
-                        # cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
                         cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
           
-            bounds_averager = [None] * 10    
+            bounds_averager = [None] * len(valid_line_list)  
         
         # Check the y coordinate directly above the max ball
         if self.max_ball is not None:

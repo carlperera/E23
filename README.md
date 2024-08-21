@@ -28,4 +28,6 @@ radius = the size set by openCV to recognise circles.
 maxarea and minare = maximum and minimum area (in terms of pixels) that tennis balls will be recognised within.
 cv2.VideoCapture(INSERT_CAMERA_NUMBER_HERE)
 
+min_line_length = minimum pixel length for lines to be detected using Hough Transform
+
 # PLEASE NOTE CHANGING THE CAMERA FRAME RESOLUTION WILL REQUIRE RECALIBRATING ALL OF THE MINAREA AND MAXAREA AND RADIUS VALS.
