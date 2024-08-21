@@ -38,8 +38,8 @@ def interrupt_service_routine(channel) -> None:
     global prevA, prevB, count
 
 
-    a = GPIO.input(PIN_MOTOR1_A_OUT)
-    b = GPIO.input(PIN_MOTOR1_B_OUT)
+    a = GPIO.input(PIN_MOTOR2_A_OUT)
+    b = GPIO.input(PIN_MOTOR2_B_OUT)
 
     # do teh logic:
     # 00 --> 01 --> 11 --> 10 is anti clock wise
@@ -69,67 +69,58 @@ def interrupt_service_routine(channel) -> None:
 if __name__ == "__main__":
     GPIO.setmode(GPIO.BCM)
     
-    """ MOTOR 1 (left)"""
+    # """ MOTOR 1 (left)"""
 
-    GPIO.setup(PIN_MOTOR1_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    GPIO.setup(PIN_MOTOR1_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    # GPIO.setup(PIN_MOTOR1_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    # GPIO.setup(PIN_MOTOR1_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-    GPIO.setup(PIN_MOTOR1_IN1, GPIO.OUT)
-    GPIO.setup(PIN_MOTOR1_IN2, GPIO.OUT)
-    GPIO.setup(PIN_MOTOR1_PWM_ENABLE, GPIO.OUT)
+    # GPIO.setup(PIN_MOTOR1_IN1, GPIO.OUT)
+    # GPIO.setup(PIN_MOTOR1_IN2, GPIO.OUT)
+    # GPIO.setup(PIN_MOTOR1_PWM_ENABLE, GPIO.OUT)
 
-    motor1_enable_pwm = GPIO.PWM(PIN_MOTOR1_PWM_ENABLE, 1000)
+    # motor1_enable_pwm = GPIO.PWM(PIN_MOTOR1_PWM_ENABLE, 1000)
 
-    motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
-    motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
-
-
-    """ MOTOR 2 (right)"""
-    # GPIO.setup(PIN_MOTOR2_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    # GPIO.setup(PIN_MOTOR2_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-    # GPIO.setup(PIN_MOTOR2_IN1, GPIO.OUT)
-    # GPIO.setup(PIN_MOTOR2_IN2, GPIO.OUT)
-    # GPIO.setup(PIN_MOTOR2_PWM_ENABLE, GPIO.OUT)
-
-    # motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_PWM_ENABLE, 1000)
-
-    # motor2_in1 = GPIO.PWM(PIN_MOTOR2_IN1, 1000)
-    # motor2_in2 = GPIO.PWM(PIN_MOTOR2_IN2, 1000)
+    # motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
+    # motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
     
-
-    """ Enable Motor 1 
-    """
-    motor1_enable_pwm.start(100) 
-    motor1_in1.start(100)
-
+    # motor1_enable_pwm.start(100) 
+    # motor1_in1.start(100)
     
-    # """ Enable Motor 2 
-    # """
-    # motor2_enable_pwm.start(100) 
-    # motor2_in1.start(100)
-
-    """ start --- MOTOR 1 """
-    # set the callback function to be called:
-    GPIO.add_event_detect(
-        PIN_MOTOR1_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
-    )
-    GPIO.add_event_detect(
-        PIN_MOTOR1_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
-    )
-    """ end --- MOTOR 1 """
-
-    # """ start --- MOTOR 2 """
     # # set the callback function to be called:
     # GPIO.add_event_detect(
-    #     PIN_MOTOR2_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+    #     PIN_MOTOR1_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
     # )
     # GPIO.add_event_detect(
-    #     PIN_MOTOR2_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+    #     PIN_MOTOR1_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
     # )
-    # """ end --- MOTOR 2 """
 
 
+
+
+    # """ MOTOR 2 (right)"""
+    GPIO.setup(PIN_MOTOR2_A_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(PIN_MOTOR2_B_OUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+    GPIO.setup(PIN_MOTOR2_IN1, GPIO.OUT)
+    GPIO.setup(PIN_MOTOR2_IN2, GPIO.OUT)
+    GPIO.setup(PIN_MOTOR2_PWM_ENABLE, GPIO.OUT)
+
+    motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_PWM_ENABLE, 1000)
+
+    motor2_in1 = GPIO.PWM(PIN_MOTOR2_IN1, 1000)
+    motor2_in2 = GPIO.PWM(PIN_MOTOR2_IN2, 1000)
+    
+    motor2_enable_pwm.start(100) 
+    motor2_in1.start(100)
+
+   
+    # set the callback function to be called:
+    GPIO.add_event_detect(
+        PIN_MOTOR2_A_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+    )
+    GPIO.add_event_detect(
+        PIN_MOTOR2_B_OUT, edge=GPIO.BOTH, callback=interrupt_service_routine
+    )
 
     timeInterval = 0.5  # calculate speed every 0.5 seconds
 
