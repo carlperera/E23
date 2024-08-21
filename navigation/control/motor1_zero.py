@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # Set up the rotary encoder
     encoder = RotaryEncoder(PIN_MOTOR1_A_OUT, PIN_MOTOR1_B_OUT)
 
-    motor1_enable.value = 1  # Enable the motor
+    motor1_enable.value = 1 # Enable the motor
     motor1_in1.value = 1  # Set direction
     motor1_in2.value = 0  # Set opposite direction
 
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Attach the callback function to the encoder
     # encoder.when_rotated = interrupt_service_routine(encoder)
 
-    timeInterval = 0.5  # Calculate speed every 0.5 seconds
+    timeInterval = 0.05 # Calculate speed every 0.5 seconds
 
     start_time = time.time()
 

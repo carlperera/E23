@@ -35,6 +35,11 @@ if __name__ == "__main__":
     timeInterval = 0.5  # Calculate speed every 0.5 seconds
 
     start_time = time.time()
+    
+    motor2_enable.value = 0
+    motor2_in1.value = 0
+    motor2_in2.value = 0
+
     while True:
         try:
             # Calculate the time elapsed
@@ -42,16 +47,19 @@ if __name__ == "__main__":
 
             # Get the current step count
             steps = encoder.steps
-            
+
             # Calculate the number of revolutions
             revs = steps / (SPR)
 
             # Convert to RPM
             # rpm = (revs / elapsed_time) * 60
             print(f"steps = {steps}")
+            time.sleep(timeInterval)
+        
         except KeyboardInterrupt:
 
             print("Done")
+            break
     # try:
     #     encoder.steps = 0 
     #     while True:

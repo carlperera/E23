@@ -72,11 +72,17 @@ if __name__ == "__main__":
 
     motor1_enable_pwm = GPIO.PWM(PIN_MOTOR1_PWM_ENABLE, 1000)
 
-    motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
-    motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
+    # motor1_in1 = GPIO.PWM(PIN_MOTOR1_IN1, 1000)
+    # motor1_in2 = GPIO.PWM(PIN_MOTOR1_IN2, 1000)
     
     motor1_enable_pwm.start(100) 
-    motor1_in1.start(100)
+    # motor1_in1.start(100)
+    # motor1_in2.start(0)
+    GPIO.output(PIN_MOTOR1_IN1, GPIO.HIGH)
+    GPIO.output(PIN_MOTOR1_IN2, GPIO.LOW)
+
+
+
     
     # set the callback function to be called:
     GPIO.add_event_detect(
@@ -108,8 +114,8 @@ if __name__ == "__main__":
             time.sleep(timeInterval)
             
         except KeyboardInterrupt:
-            motor1_in1.stop()
-            motor1_in2.stop()
+            # motor1_in1.stop()
+            # motor1_in2.stop()
         
 
             GPIO.cleanup()

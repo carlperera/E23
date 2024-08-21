@@ -7,6 +7,8 @@ PIN_MOTOR1_PWM_ENABLE = 18 # LOW - good
 PIN_MOTOR1_A_OUT = 21# LOW - good 
 PIN_MOTOR1_B_OUT = 20 # LOW - good
 
+SPR = 48
+GEAR_RATIO = 74.83
 pwm1 = gpiozero.PWMOutputDevice(pin=PIN_MOTOR1_PWM_ENABLE,active_high=True,initial_value=0,frequency=100)
 dir1 = gpiozero.OutputDevice(pin=PIN_MOTOR1_IN1)
 dir2 = gpiozero.OutputDevice(pin=PIN_MOTOR1_IN2)
@@ -25,6 +27,16 @@ for j in range(10):
     print('Duty cycle:',pwm1.value,'Direction:',dir1.value)
     time.sleep(5.0)
     print('Counter:',encoder1.steps,'Speed:',(encoder1.steps)/5.0,'steps per second\n')
+    steps = encoder1.steps
+
+    # Calculate the number of revolutions
+    revs = steps / (SPR* GEAR_RATIO)
+
+    # Convert to RPM
+    rpm = (revs / 5) * 60
+
+    print(f"RPM = {rpm:.2f} RPM, Steps = {steps}")
+    
     encoder1.steps = 0
 
 pwm1.value =0 

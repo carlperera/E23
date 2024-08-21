@@ -59,6 +59,7 @@ def interrupt_service_routine(channel) -> None:
 
 
 if __name__ == "__main__":
+    
     GPIO.setmode(GPIO.BCM)
     
     # """ MOTOR 2 (right)"""
@@ -72,11 +73,13 @@ if __name__ == "__main__":
 
     motor2_enable_pwm = GPIO.PWM(PIN_MOTOR2_PWM_ENABLE, 1000)
 
-    motor2_in1 = GPIO.PWM(PIN_MOTOR2_IN1, 1000)
-    motor2_in2 = GPIO.PWM(PIN_MOTOR2_IN2, 1000)
+    # motor2_in1 = GPIO.PWM(PIN_MOTOR2_IN1, 1000)
+    # motor2_in2 = GPIO.PWM(PIN_MOTOR2_IN2, 1000)
     
-    motor2_enable_pwm.start(100) 
-    motor2_in1.start(100)
+    motor2_enable_pwm.start(50) 
+    
+    GPIO.output(PIN_MOTOR2_IN1, GPIO.HIGH)
+    GPIO.output(PIN_MOTOR2_IN2, GPIO.LOW)
     
     # set the callback function to be called:
     GPIO.add_event_detect(
@@ -107,8 +110,8 @@ if __name__ == "__main__":
             time.sleep(timeInterval)
             
         except KeyboardInterrupt:
-            motor2_in1.stop()
-            motor2_in2.stop()
+            # motor2_in1.stop()
+            # motor2_in2.stop()
             
 
             GPIO.cleanup()
