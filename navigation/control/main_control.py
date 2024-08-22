@@ -1,10 +1,6 @@
 from  DiffDriveRobot import DiffDriveRobot
 from RobotController import RobotController
 import numpy as np
-# import matplotlib.pyplot as plt
-# from IPython import display
-import gpiozero
-from gpiozero import Motor
 import time
 import RPi.GPIO as GPIO
 import math
@@ -73,8 +69,6 @@ motor2_enable_pwm.start(100) # initial speed
 
 GPIO.output(PIN_MOTOR2_IN1, GPIO.HIGH)
 GPIO.output(PIN_MOTOR2_IN2, GPIO.LOW)
-
-
 
 
 while True:

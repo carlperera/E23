@@ -1,16 +1,13 @@
 import numpy as np
 
-
 WHEEL_SEP = (147 + 64)/1000
 WHEEL_RAD = (53/2)/1000
 
-
+# pass in the pin numbers for this robot 
 class DiffDriveRobot:
     def __init__(self,inertia=5, dt=0.1, drag=0.2, wheel_radius=WHEEL_RAD, wheel_sep=WHEEL_SEP, max_speed = 3, init_weight = 0.5):
         
-        self.x = 0.0 # y-position
-        self.y = 0.0 # y-position 
-        self.th = 0.0 # orientation
+        self.reset_init_position(x=0.0,y=0.0,th=0.0)
         
         self.max_speed = max_speed
         self.wl = 0.0 #rotational velocity left wheel
@@ -20,49 +17,32 @@ class DiffDriveRobot:
         self.d = drag
         self.dt = dt # time step for updates - default is 0.1 s
         
-        self.r = wheel_radius
-        self.l = wheel_sep
+        self.rad = wheel_radius
+        self.wheel_sep = wheel_sep
         self.weight = init_weight # initial weight (without any tennis balls)
+        
     
-    # # Should be replaced by motor encoder measurement which measures how fast wheel is turning
-    def motor_simulator(self,w,duty_cycle):
-        """
-        Args:
-            :w - current speed
-            :duty cycle - the measured duty cycle?
-        """
-        
-        torque = self.I*duty_cycle
-        
-        if (w > 0):
-            w = min(w + self.dt*(torque - self.d*w),3)
-        elif (w < 0):
-            w = max(w + self.dt*(torque - self.d*w),-3)
-        else:
-            w = w + self.dt*(torque)
-        
-        return w
-        
-    # Veclocity motion model
+    def reset_init_position(self, x, y, th):
+        self.x = x
+        self.y = y
+        self.th = th 
+
+    #  Converts radial velocity of left and right wheel into velocial and radial velocity of entire robot 
     def base_velocity(self,wl,wr):
         
-        v = (wl*self.r + wr*self.r)/2.0
+        v = (wl*self.rad + wr*self.rad)/2.0
         
-        w = (wl*self.r - wr*self.r)/self.l
+        w = (wl*self.rad- wr*self.rad)/self.wheel_sep
         
         return v, w
     
-    def duty_cycle_to_velocity(self, duty_cycle):
-        # You can adjust the conversion factor based on your motor specifications
-        # For example, let's assume a simple linear relationship for demonstration
-       
-        return duty_cycle * self.max_speed
+   
     
-    # Kinematic motion model
-    def pose_update(self,duty_cycle_l,duty_cycle_r):
-        
-        self.wl = self.duty_cycle_to_velocity(duty_cycle_l)
-        self.wr = self.duty_cycle_to_velocity(duty_cycle_r)
+    # Internal state holder 
+    def pose_update(self, rad_vel_left, rad_vel_right):
+        # convert rpms into radial velocity for both left and right motors 
+        self.wl = rad_vel_left # get the 
+        self.wr = rad_vel_right
         
         v, w = self.base_velocity(self.wl, self.wr)
         
