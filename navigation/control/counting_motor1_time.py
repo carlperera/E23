@@ -93,15 +93,24 @@ if __name__ == "__main__":
     )
 
 
-    timeInterval = 0.5  # calculate speed every 0.5 seconds
+    timeInterval = 0.2  # calculate speed every 0.5 seconds
 
-    
+
     while True:
-        try:
+        try: 
             # calculate motor speed:
             # revs of the motor shaft:
-            revs = count / (CPR * GEAR_RATIO)
             
+
+
+            revs = count / (CPR * GEAR_RATIO)
+
+            print(f"revs = {revs}")
+           
+            if(abs(revs) >= 2):
+                GPIO.cleanup()
+                print("Done")
+                break
 
             # convert revolutions to rpm:
             rpm = (revs / timeInterval) * 60
@@ -109,7 +118,7 @@ if __name__ == "__main__":
             print(f"RPM = {rpm:.2f} RPM, count = {count: .2f}")
 
             # reset the encoder count to zero (so the past encoder counts dont affect the calculation of the next rpm)
-            count = 0
+            # count = 0
 
             # sleep
             time.sleep(timeInterval)

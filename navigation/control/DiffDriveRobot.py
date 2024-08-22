@@ -1,8 +1,12 @@
 import numpy as np
 
+
+WHEEL_SEP = (147 + 64)/1000
+WHEEL_RAD = (53/2)/1000
+
+
 class DiffDriveRobot:
-    
-    def __init__(self,inertia=5, dt=0.1, drag=0.2, wheel_radius=0.05, wheel_sep=0.15, max_speed = 3):
+    def __init__(self,inertia=5, dt=0.1, drag=0.2, wheel_radius=WHEEL_RAD, wheel_sep=WHEEL_SEP, max_speed = 3, init_weight = 0.5):
         
         self.x = 0.0 # y-position
         self.y = 0.0 # y-position 
@@ -18,6 +22,7 @@ class DiffDriveRobot:
         
         self.r = wheel_radius
         self.l = wheel_sep
+        self.weight = init_weight # initial weight (without any tennis balls)
     
     # # Should be replaced by motor encoder measurement which measures how fast wheel is turning
     def motor_simulator(self,w,duty_cycle):
