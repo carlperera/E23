@@ -38,17 +38,17 @@ def interrupt_service_routine(channel) -> None:
     # 11 --> 01 --> 00 --> 10 is clock wise
     # increment or decrement count variable
     if (prevA == LOW and prevB == LOW and a == LOW and b == LOW) or \
-       (prevA == LOW and prevB == GPIO.HIGH and a == GPIO.HIGH and b == GPIO.HIGH) or \
+       (prevA == LOW and prevB == GPIO.HIGH and a == HIGH and b == GPIO.HIGH) or \
        (prevA == GPIO.HIGH and prevB == GPIO.HIGH and a == GPIO.HIGH and b == LOW) or \
        (prevA == LOW and prevB == LOW and a == LOW and b == LOW):
-        count += 1  # Clockwise
-        # print("plus")
+        count -= 1  # Clockwise
+
     elif (prevA == GPIO.HIGH and prevB == GPIO.HIGH and a == GPIO.LOW and b == GPIO.HIGH) or \
         (prevA == GPIO.LOW and prevB == GPIO.HIGH and a == GPIO.LOW and b == GPIO.LOW) or \
         (prevA == GPIO.LOW and prevB == GPIO.LOW and a == 1 and b == GPIO.LOW) or \
         (prevA == GPIO.HIGH and prevB == GPIO.LOW and a == GPIO.HIGH and b == GPIO.HIGH):
-        count -= 1  # Counterclockwise
-        # print("minus")
+        count += 1  # Counterclockwise
+       
     else:
         #do nothing
         pass
