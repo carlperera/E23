@@ -8,10 +8,13 @@ class TentaclePlanner:
         self.dt = dt 
         self.steps = steps
         # Tentacles are possible trajectories to follow
+        # (v, w) - linear velocity (forward speed), angular velocity (turning rate)
         self.tentacles = [(0.0,0.5),(0.0,-0.5),(0.1,1.0),(0.1,-1.0),(0.1,0.5),(0.1,-0.5),(0.1,0.0),(0.0,0.0)]
         
-        self.alpha = alpha
-        self.beta = beta
+        # alpha and beta are weighting factors for cost function
+
+        self.alpha = alpha # weighting factor for reaching goal position
+        self.beta = beta # weighting factor for reaching goal orientation
     
     # Play a trajectory and evaluate where you'd end up
     def roll_out(self,v,w,goal_x,goal_y,goal_th,x,y,th):
