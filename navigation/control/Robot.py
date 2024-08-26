@@ -1,8 +1,8 @@
+import time
 import gpiozero
 import math
 
-from time import sleep
-from time import time
+
 
 WHEEL_SEP = (147 + 64)/1000
 WHEEL_RAD = (53/2)/1000
@@ -30,17 +30,26 @@ class Robot:
         self.motor1_multiplier = 1
         self.motor2_multiplier = 1 
 
-        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=self.pins.PIN_MOTOR1_PWM_ENABLE,active_high=True,initial_value=0,frequency=100)
-        self.motor1_in1 = gpiozero.OutputDevice(pin=self.pins.PIN_MOTOR1_IN1)
-        self.motor1_in2 = gpiozero.OutputDevice(pin=self.pins.PIN_MOTOR1_IN2)
-        self.motor1_encoder = gpiozero.RotaryEncoder(a=self.pins.PIN_MOTOR1_A_OUT, b=self.pins.PIN_MOTOR1_B_OUT,max_steps=100000) 
+        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=self.pins["PIN_MOTOR1_PWM_ENABLE"],active_high=True,initial_value=0,frequency=100)
+        self.motor1_in1 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR1_IN1"])
+        self.motor1_in2 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR1_IN2"])
+        self.motor1_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR1_A_OUT"], b=self.pins["PIN_MOTOR1_B_OUT"],max_steps=100000) 
 
-        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=self.pins.PIN_MOTOR2_PWM_ENABLE,active_high=True,initial_value=0,frequency=100)
-        self.motor2_in1 = gpiozero.OutputDevice(pin=self.pins.PIN_MOTOR2_IN1)
-        self.motor2_in2 = gpiozero.OutputDevice(pin=self.pins.PIN_MOTOR2_IN2)
-        self.motor2_encoder = gpiozero.RotaryEncoder(a=self.pins.PIN_MOTOR2_A_OUT, b=self.pins.PIN_MOTOR2_B_OUT,max_steps=100000) 
+        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=self.pins["PIN_MOTOR2_PWM_ENABLE"],active_high=True,initial_value=0,frequency=100)
+        self.motor2_in1 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR2_IN1"])
+        self.motor2_in2 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR2_IN2"])
+        self.motor2_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR2_A_OUT"], b=self.pins["PIN_MOTOR2_B_OUT"],max_steps=100000) 
 
+
+
+        self.encoder_scaling
+        self.reset_position(0.0,0.0,0.0)
         self.reset_encoders()
+
+    def reset_position(self, x, y, th):
+        self.x = x
+        self.y = y
+        self.th = y
 
     def reset_encoders(self):
         self.motor1_encoder.steps = 0
@@ -50,6 +59,38 @@ class Robot:
         wheel_rotatations_per_step = 1 / (CPR*GEAR_RATIO)
         return 2*math.pi*self.wheel_radius*wheel_rotatations_per_step
     
+    def move_forward_alt(self, distance, speed=0.5):
+        """
+        Moves the robot forward by a specific distance at the given speed.
+        """
+        encoder_steps = self.dist_to_encoder_steps(distance)
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving forward
+        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+
+            time.sleep(0.01)  # Small delay for sensor feedback
+
+        # Stop motors
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+        print("done\n")
+
+
+
+
+
+
+
     def calibrate_motors(self, duration = 5):
         """
         Runs both motors at full speed for a fixed duration and calculates the ratio
@@ -65,7 +106,7 @@ class Robot:
         self.motor2_in1.on()
         self.motor2_in2.off()
 
-        sleep(duration)
+        time.sleep(duration)
 
         # Stop motors
         self.motor1_pwm.off()
@@ -92,7 +133,7 @@ class Robot:
         encoder_steps = self.dist_to_encoder_steps(distance)
         self.reset_encoders()
 
-        Kp_forward = 0.01  # Proportional gain for forward adjustment
+        # Kp_forward = 0.01  # Proportional gain for forward adjustment
 
         # Set motor direction for forward movement
         self.motor1_in1.on()
@@ -105,18 +146,21 @@ class Robot:
 
         # Start moving forward
         while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
-            # Calculate the difference in encoder steps
-            error = self.motor1_encoder.steps - self.motor2_encoder.steps
+            # # Calculate the difference in encoder steps
+            # error = self.motor1_encoder.steps - self.motor2_encoder.steps
+            # print(error)
 
-            # Adjust PWM values for forward movement
-            self.motor1_pwm.value = max(0, min(1, speed - Kp_forward * error))
-            self.motor2_pwm.value = max(0, min(1, speed + Kp_forward * error))
+            # # # Adjust PWM values for forward movement
+            # self.motor1_pwm.value = max(0, min(1, speed - Kp_forward * error))
+            # self.motor2_pwm.value = max(0, min(1, speed + Kp_forward * error))
+            # print(f"left = {self.motor1_pwm.value}       right = {self.motor2_pwm.value}")
 
             time.sleep(0.01)  # Small delay for sensor feedback
 
         # Stop motors
         self.motor1_pwm.off()
         self.motor2_pwm.off()
+        print("done\n")
 
     def move_backward(self, distance, speed=0.5):
         """

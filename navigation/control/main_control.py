@@ -63,7 +63,28 @@ if __name__ == "__main__":
 
     robot = Robot()
    
-    robot.move_forward(distance=0.1, speed = 1.0)
+    robot.move_forward(distance=0.04, speed = 1.0)
+
+
+    # robot.rotate(-180, speed = 0.3)
+
+    # while True:
+    #     """
+    #     1. start at start point
+        
+    #         if (check if current position (x_init, y_init, th_init) frame has a tennis ball):
+            
+    #         else:
+    #             explore quadrant 
+    #                 Options for exploration:
+    #                     1. go to middle of the quadrant, then keep rotating in place until you find something.
+                    
+            
+        
+    #     """
+        
+
+    
     # robot.rotate(180, 0.5)
 
 
