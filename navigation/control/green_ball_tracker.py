@@ -157,7 +157,7 @@ class Tennis_ball_detect(ABC):
     
         capWidth = 1280
         capHeight = 960
-        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        camera = cv2.VideoCapture(0) # REMOVE cv2.CAP_DSHOW ON THE RPI
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, capWidth) #1280
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, capHeight) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)

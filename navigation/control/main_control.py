@@ -3,6 +3,7 @@ from RobotController import RobotController
 from TentaclePlanner import TentaclePlanner
 
 from Robot import Robot
+from Vision import Vision
 
 import numpy as np
 import time
@@ -53,59 +54,14 @@ WHEEL_RAD = (53/2)/1000
 CAMERA_FPS = 30
 FRAME_SKIP = 1
 
-"""
-states = 
-1.looking for ball to lock onto
-2.locked onto ball, 
-"""
+
+
 
 if __name__ == "__main__":
 
     robot = Robot()
-   
-    robot.move_forward(distance=0.04, speed = 1.0)
-
-
-    # robot.rotate(-180, speed = 0.3)
-
-    # while True:
-    #     """
-    #     1. start at start point
-        
-    #         if (check if current position (x_init, y_init, th_init) frame has a tennis ball):
-            
-    #         else:
-    #             explore quadrant 
-    #                 Options for exploration:
-    #                     1. go to middle of the quadrant, then keep rotating in place until you find something.
-                    
-            
-        
-    #     """
-        
 
     
-    # robot.rotate(180, 0.5)
 
-
-    # time_interval = (1/CAMERA_FPS)*FRAME_SKIP
-
-    # while True:
-
-    #     try:
-    #         # get frame from camera 
-    #         # check frame for tennis balls 
-    #         # check frame for lines
-
-    #         # if already locked onto ball 
-    #         frame = 
-
-
-    #         time.sleep(time_interval)
-                
-
-    #     except KeyboardInterrupt:
-
-            
-    #         print("Done")
-    #         break
+    # robot.move_backward(distance=0.01, speed=1.0)
+    robot.rotate(-360, speed = 0.5)

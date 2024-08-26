@@ -4,8 +4,8 @@ import math
 
 
 
-WHEEL_SEP = (147 + 64)/1000
-WHEEL_RAD = (53/2)/1000
+WHEEL_SEP = 227/1000
+WHEEL_RAD = 61/2/1000
 CPR = 48
 GEAR_RATIO = 74.38
 
@@ -41,8 +41,6 @@ class Robot:
         self.motor2_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR2_A_OUT"], b=self.pins["PIN_MOTOR2_B_OUT"],max_steps=100000) 
 
 
-
-        self.encoder_scaling
         self.reset_position(0.0,0.0,0.0)
         self.reset_encoders()
 
@@ -169,7 +167,7 @@ class Robot:
         encoder_steps = self.dist_to_encoder_steps(distance)
         self.reset_encoders()
 
-        Kp_backward = 0.01  # Proportional gain for backward adjustment
+        # Kp_backward = 0.01  # Proportional gain for backward adjustment
 
         # Set motor direction for backward movement
         self.motor1_in1.off()
@@ -183,11 +181,11 @@ class Robot:
         # Start moving backward
         while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
             # Calculate the difference in encoder steps
-            error = self.motor1_encoder.steps - self.motor2_encoder.steps
+            # error = self.motor1_encoder.steps - self.motor2_encoder.steps
 
-            # Adjust PWM values for backward movement
-            self.motor1_pwm.value = max(0, min(1, speed + Kp_backward * error))
-            self.motor2_pwm.value = max(0, min(1, speed - Kp_backward * error))
+            # # Adjust PWM values for backward movement
+            # self.motor1_pwm.value = max(0, min(1, speed + Kp_backward * error))
+            # self.motor2_pwm.value = max(0, min(1, speed - Kp_backward * error))
 
             time.sleep(0.01)  # Small delay for sensor feedback
 
@@ -248,7 +246,7 @@ class Robot:
         
         return encoder_steps
    
-    def rotate(self, angle_degrees, speed=0.5):
+    def rotate(self, angle_degrees, speed):
         """
         Rotates the robot by a specific angle (in degrees) at the given speed.
 
@@ -262,36 +260,16 @@ class Robot:
             :
         """
         encoder_steps = self.calculate_encoder_steps_for_rotation(angle_degrees)
+        print(encoder_steps)
         
         self.reset_encoders()
 
         # Determine direction based on the sign of the angle
         if angle_degrees > 0:
-            # Turn right: Motor 1 forward, Motor 2 backward
-            self.motor1_in1.on()
-            self.motor1_in2.off()
-            self.motor2_in1.off()
-            self.motor2_in2.on()
+            self.rotate_clockwise(angle_degrees/4, speed)
         else:
-            # Turn left: Motor 1 backward, Motor 2 forward
-            self.motor1_in1.off()
-            self.motor1_in2.on()
-            self.motor2_in1.on()
-            self.motor2_in2.off()
+            self.rotate_anticlockwise(angle_degrees/4, speed)
 
-        # Set PWM values
-        self.motor1_pwm.value = speed
-        self.motor2_pwm.value = speed
-
-        # Rotate until the required number of steps is reached
-        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
-
-            time.sleep(0.01)  # Small delay for sensor feedback
-
-
-        # Stop motors
-        self.motor1_pwm.off()
-        self.motor2_pwm.off()
 
 
 
@@ -300,7 +278,7 @@ class Robot:
         encoder_steps = self.calculate_encoder_steps_for_rotation(abs(angle))
         self.reset_encoders()
 
-        Kp_rotate = 0.01  # Proportional gain for rotation adjustment
+        # Kp_rotate = 0.01  # Proportional gain for rotation adjustment
 
         # Set motor directions for clockwise rotation
         self.motor1_in1.on()
@@ -312,14 +290,19 @@ class Robot:
         self.motor2_pwm.value = speed
 
         while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
-            error = self.motor1_encoder.steps + self.motor2_encoder.steps
-            self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
-            self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # error = self.motor1_encoder.steps + self.motor2_encoder.steps
+            # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             time.sleep(0.01)
 
         self.motor1_pwm.off()
         self.motor2_pwm.off()
 
+        self.motor1_in1.off()
+        self.motor1_in2.off()
+        self.motor2_in1.off()
+        self.motor2_in2.off()
+     
 
     def rotate_anticlockwise(self, angle, speed=0.5):
         """Rotates the robot counterclockwise by a specific angle at the given speed."""
@@ -338,20 +321,15 @@ class Robot:
         self.motor2_pwm.value = speed
 
         while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
-            error = self.motor1_encoder.steps + self.motor2_encoder.steps
-            self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
-            self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # error = self.motor1_encoder.steps + self.motor2_encoder.steps
+            # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             time.sleep(0.01)
 
         self.motor1_pwm.off()
         self.motor2_pwm.off()
 
 
-    def rotate(self, angle_deg, speed = 0.5):
-        if (angle_deg > 0): # clockwise 
-            self.rotate_clockwise(angle=angle_deg, speed=speed)
-        else:
-            self.rotate_anticlockwise(angle=abs(angle_deg), speed=speed)
 
     
 
