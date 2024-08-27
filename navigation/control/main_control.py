@@ -63,5 +63,5 @@ if __name__ == "__main__":
 
     
 
-    # robot.move_backward(distance=0.01, speed=1.0)
-    robot.rotate(-360, speed = 0.5)
+    robot.move_forward(distance=0.01, speed=1.0)
+    # robot.rotate(-360, speed = 0.5)

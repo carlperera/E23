@@ -1,9 +1,6 @@
-from  DiffDriveRobot import DiffDriveRobot
-from RobotController import RobotController
-from TentaclePlanner import TentaclePlanner
-
 from Robot import Robot
 from Vision import Vision
+from green_ball_tracker import General_control
 
 import numpy as np
 import time
@@ -12,23 +9,8 @@ import math
 from threading import Thread, Lock
 from functools import partial
 
-"""
-whenever you stop the robot, you want to set steps for both motors to 0
-  
-to rotate clockwise: 
--> motor left driven forward
--> motor right driven backward 
+from enum import Enum
 
-to rotate anti-clockwise: 
--> motor left driven backward
--> motor right driven forward
-
-to go straight:
--> motor left driven forward by count1 ratio 
--> motor right driven forward by count2 ratio
-
-distance_travelled_forward = motor1_scaling*count + motor2_scaling*count
-"""
 
 # ----------- CONSTANTS -------------
 CPR = 48
@@ -54,8 +36,10 @@ WHEEL_RAD = (53/2)/1000
 CAMERA_FPS = 30
 FRAME_SKIP = 1
 
-
-
+# class State(Enum):
+#     EXPLORE
+#     ON_TARGET
+#     RETURN
 
 if __name__ == "__main__":
 
@@ -66,7 +50,11 @@ if __name__ == "__main__":
     while True: # for each frame from camera 
 
         # get latest frame
-        frame = vision.camera
+        ret, frame = vision.camera.read()
+
+        if not ret:
+            print("error")
+            break
 
         # check for line detected - display on imshow
 

@@ -40,9 +40,13 @@ class Robot:
         self.motor2_in2 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR2_IN2"])
         self.motor2_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR2_A_OUT"], b=self.pins["PIN_MOTOR2_B_OUT"],max_steps=100000) 
 
-
+        self.x = 0.0
+        self.y  = 0.0
+        self.th = 0.0
+        
         self.reset_position(0.0,0.0,0.0)
         self.reset_encoders()
+
 
     def reset_position(self, x, y, th):
         self.x = x
@@ -124,11 +128,19 @@ class Robot:
         print(f"Calibration complete. Motor1 Multiplier: {self.motor1_multiplier}, Motor2 Multiplier: {self.motor2_multiplier}")
 
 
+    def move(self, distance, speed):
+        if distance > 0: 
+            self.move_forward(distance, speed)
+        else:
+            self.move_backward(distance, speed)
+
+
+
     def move_forward(self, distance, speed=0.5):
         """
         Moves the robot forward by a specific distance at the given speed.
         """
-        encoder_steps = self.dist_to_encoder_steps(distance)
+        encoder_steps = self.dist_to_encoder_steps(distance)/3
         self.reset_encoders()
 
         # Kp_forward = 0.01  # Proportional gain for forward adjustment
@@ -164,7 +176,7 @@ class Robot:
         """
         Moves the robot backward by a specific distance at the given speed.
         """
-        encoder_steps = self.dist_to_encoder_steps(distance)
+        encoder_steps = self.dist_to_encoder_steps(distance)/3
         self.reset_encoders()
 
         # Kp_backward = 0.01  # Proportional gain for backward adjustment
