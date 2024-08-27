@@ -1,21 +1,18 @@
 # E23
 
-## GPIO Pin layout (as of 14th Aug)
-PIN_MOTOR_A_IN1 = 17
-PIN_MOTOR_A_IN2 = 27
-
-PIN_MOTOR_B_IN1 = 23
-PIN_MOTOR_B_IN2 = 24    
-
-PIN_MOTOR1_ENABLE = 18
-PIN_MOTOR2_ENABLE = 10
+## GPIO Pin layout (as of 24th Aug)
+PIN_MOTOR1_IN1 = 17 # LOW - good
+PIN_MOTOR1_IN2 = 27 # LOW -good 
+PIN_MOTOR1_PWM_ENABLE = 18 # LOW - good 
+PIN_MOTOR1_A_OUT = 21# LOW - good 
+PIN_MOTOR1_B_OUT = 20 # LOW - good
 
 # motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
-PIN_MOTOR1_OUT_A = 5
-PIN_MOTOR1_OUT_B = 6
-
-PIN_MOTOR2_OUT_A = 3
-PIN_MOTOR2_OUT_B = 2
+PIN_MOTOR2_IN1 = 23 # LOW - good
+PIN_MOTOR2_IN2 = 24 # LOW -good 
+PIN_MOTOR2_PWM_ENABLE = 9 # LOW - good 
+PIN_MOTOR2_A_OUT = 14# LOW - good 
+PIN_MOTOR2_B_OUT = 15 # LOW - good
 
 PIN_SERVO = 12
 
