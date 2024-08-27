@@ -8,9 +8,7 @@ import gpiozero
 import math
 from threading import Thread, Lock
 from functools import partial
-
-from enum import Enum
-
+from State import State
 
 # ----------- CONSTANTS -------------
 CPR = 48
@@ -36,16 +34,33 @@ WHEEL_RAD = (53/2)/1000
 CAMERA_FPS = 30
 FRAME_SKIP = 1
 
-# class State(Enum):
-#     EXPLORE
-#     ON_TARGET
-#     RETURN
+"""
+1.) exploring
+    1.1) rotate around 360 until you find a ball in the frame, if ball found at any point, 
+        1.1.1) lock onto it 
+        1.1.2) go to 1.2
+    1.2) go to centre of quadrant 
+        1.1.1) do 1.1
+
+2) locked on 
+    2.1) start moving to target 
+    2.2) keep moving to target
+    2.3) close to target (top of tennis ball moves below horizontal threshold in camera), switch to slow mode 
+    2.4) use ultrasonics to touch the ball and register a print out 
+
+3) return to start 
+    3.1) start moving to start by moving away from robot and rotating to face the the start location 
+    3.2) keep moving to start 
+    3.3) finish moving to start by slowing down to get more accuracy 
+    3.4) finalise anything necessary 
+"""
 
 if __name__ == "__main__":
 
-    robot = Robot()
+    robot = Robot(State.EXPLORE_START)
 
     vision = Vision()
+
 
     while True: # for each frame from camera 
 
@@ -56,10 +71,7 @@ if __name__ == "__main__":
             print("error")
             break
 
-        # check for line detected - display on imshow
-
-
-        # check for ball detected 
+        robot.handle_state(frame)
     
         
 

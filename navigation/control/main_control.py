@@ -12,6 +12,8 @@ import math
 from threading import Thread, Lock
 from functools import partial
 
+from State import State
+
 """
 whenever you stop the robot, you want to set steps for both motors to 0
   
@@ -55,13 +57,10 @@ CAMERA_FPS = 30
 FRAME_SKIP = 1
 
 
-
-
 if __name__ == "__main__":
 
-    robot = Robot()
-
     
+    robot = Robot(State.EXPLORE_START)
 
-    robot.move_forward(distance=0.01, speed=1.0)
-    # robot.rotate(-360, speed = 0.5)
+    # robot.move(distance=0.3, speed=1.0)
+    # robot.rotate(180, speed = 0.4)
