@@ -118,16 +118,18 @@ class Vision:
                     self.inCentre = 1  # Middle third
                 else:
                     self.inCentre = 3  # Right third
-
+            
+            return self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-                
-            
+        
+        return -1
+
         # time.sleep(0.1)
 
         # show the frame to our screen
-        cv2.imshow("Masked frame", mask)
-        cv2.imshow("Webcam", frame)
+        # cv2.imshow("Masked frame", mask)
+        # cv2.imshow("Webcam", frame)
         # cv2.imshow('Line detected Image', line_detected_img)
 
         

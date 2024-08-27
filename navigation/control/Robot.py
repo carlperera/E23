@@ -8,6 +8,12 @@ WHEEL_RAD = 61/2/1000
 CPR = 48
 GEAR_RATIO = 74.38
 
+"""
+1. how to remember order of operations? Keep them in a tray as memory?
+2. how to return back to start location?
+
+"""
+
 class Robot:    
 
     def __init__(self, state_init) -> None:
@@ -91,7 +97,7 @@ class Robot:
         self.motor1_in1.off()
         self.motor1_in2.off()
 
-    # MISSION METHODs
+    """MISSION METHODS"""
     def start_rotating_clockwise(self, speed):
         self.reset_encoders()
         
@@ -103,6 +109,22 @@ class Robot:
 
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
+
+    def update_orientation(self, angle_deg):
+        new_angle = (self.th + angle_deg) % 360
+
+        # Adjust to be within -180 to 180 range
+        if new_angle > 180:
+            new_angle -= 360
+        elif new_angle <= -180:
+            new_angle += 360
+        self.th = new_angle
+
+    def update_x(self, x_diff):
+        self.x = self.x + x_diff
+    
+    def update_y(self, y_diff):
+        self.y = self.y + y_diff
 
     def stop_rotating_clockwise(self):
         
@@ -117,10 +139,11 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
-        angle_rad = self.encoder_steps_to_angle(motor2_steps)
+        angle_deg = self.encoder_steps_to_angle(motor2_steps)
 
+        self.update_orientation(0-angle_deg)
         self.reset_encoders()
-        
+    
     def stop_rotating_anticlockwise(self):
 
         self.motor1_pwm.off()
@@ -130,11 +153,120 @@ class Robot:
         self.motor1_in2.off()
         self.motor2_in1.off()
         self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        angle_deg = self.encoder_steps_to_angle(motor1_steps)
+
+        self.update_orientation(angle_deg)
+        self.reset_encoders()
+
+    def start_forward(self, speed):
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed 
+
+    def stop_forward(self):
+        self.motor1_in1.off()
+        self.motor2_in1.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        """check odometry calcs"""
+
+        # self.update_x(x_diff)
+        # self.update_y(y_diff)
+
+        self.update_position(dist_travelled)
+
+        self.reset_encoders()
+
+
+    def update_position(self, dist_travelled):
+        angle_deg = self.th
+
+
+        if 0 <= angle_deg < 90:
+            x_diff = math.cos(math.radians(self.th))*dist_travelled
+            y_diff = math.sin(math.radians(self.th))*dist_travelled
+
+            self.update_x(0-x_diff)
+            self.update_y(y_diff)   
+
+        elif 90 <= angle_deg < 180:
+            angle = 180-angle_deg
+
+            x_diff = math.cos(math.radians(angle))*dist_travelled
+            y_diff = math.sin(math.radians(angle))*dist_travelled
+
+            self.update_x(x_diff)
+            self.update_y(y_diff)  
+
+        elif 180 <= angle_deg < 270:
+            angle = 270-angle_deg
+
+            x_diff = math.sin(math.radians(angle))*dist_travelled
+            y_diff = math.cos(math.radians(angle))*dist_travelled 
+
+            self.update_x(x_diff)
+            self.update_y(y_diff)  
+
+        else:
+            angle = 360-angle_deg
+
+            x_diff = math.cos(math.radians(angle))*dist_travelled
+            y_diff = math.sin(math.radians(angle))*dist_travelled 
+
+            self.update_x(0-x_diff)
+            self.update_y(0-y_diff)  
+
+   
+
+
+    def start_backward(self, speed):
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+        
+        """check odometry calcs"""
+
+       
+
+        self.reset_encoders()
+
+
+    
+    def stop_backwards(self):
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        self.motor1_in2.off()
+        self.motor2_in2.off()
+
     
     def encoder_steps_to_angle(self, encoder_steps):
         arc_len = self.encoder_steps_to_dist(encoder_steps)
         angle_rad = self.arc_len_to_angle(arc_len)
-        return angle_rad 
+        angle_deg = math.degrees(angle_rad)
+        return angle_deg 
     
     def calibrate_motors(self, duration = 5):
         """
@@ -175,6 +307,8 @@ class Robot:
             self.move_forward(distance, speed)
         else:
             self.move_backward(distance, speed)
+
+
 
     def move_forward(self, distance, speed=0.5):
         """
@@ -400,29 +534,29 @@ class Robot:
         self.motor2_pwm.off()
 
 
-    def handle(self, frame):
+    # def handle(self, frame):
 
-        match self.state:
-            case State.EXPLORE_START:
+    #     match self.state:
+    #         case State.START:
+    #             # check if any balls detected in current frame 
 
-            case State.EXPLORE_ROTATING:
+                
+                
+    #         case State.
+
+    #             if 
 
             
-            case State.EXPLORE_CENTRE:
+    #         case State.EXPLORE_CENTRE:
 
             
-            case State.FOUND_TARGET:
+    #         case State.FOUND_TARGET:
 
             
-            case State.ON_TARGE:
+    #         case State.ON_TARGET:
        
 
      
-    FOUND_TARGET = 3
-    ON_TARGET = 4
-    CLOSE_TO_TARGET = 5
-    START_RETURN = 6
-    RETURNING = 7
 
 
 

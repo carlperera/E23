@@ -62,5 +62,6 @@ if __name__ == "__main__":
     
     robot = Robot(State.EXPLORE_START)
 
-    # robot.move(distance=0.3, speed=1.0)
+    robot.move(distance=0.3, speed=1.0)
     # robot.rotate(180, speed = 0.4)
+    # robot.move(distance=0.3)
