@@ -57,13 +57,16 @@ FRAME_SKIP = 1
 
 if __name__ == "__main__":
 
-    robot = Robot(State.EXPLORE_START)
+    vision = Vision()
+    time.sleep(2)
 
+    robot = Robot(State.START, vision=vision)
+ 
 
     while True: # for each frame from camera 
         try:
             # get latest frame
-            ret, frame = robot.vision.camera.read()
+            ret, frame = vision.camera.read()
 
             if not ret:
                 print("error")

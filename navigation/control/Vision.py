@@ -2,6 +2,20 @@ import cv2
 import numpy as np 
 
 class Vision:
+    class Tennis_ball:
+        pixels = 0
+        x = 0
+        y = 0
+        ball_index = 0
+        def __init__(self,pixels,x,y,ball_index):
+            self.pixels = pixels
+            self.x = x
+            self.y = y
+            self.ball_index = ball_index
+
+        def __str__(self):
+            return "Tennis ball #"+str(self.ball_index)+"\n Pixels"+str(self.pixels)+"\n X:"+str(self.x)+" Y:"+str(self.y)+"\n"
+
 
     def __init__(self):
         self.capWidth = 1280
@@ -94,7 +108,7 @@ class Vision:
                     cv2.putText(frame, "Radius: " + str(radius), (center[0] + 10, center[1] + 40),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
                     # Optional: Draw vertical lines for center region boundaries
-                    cv2.line(frame , (int(self.apWidth * 0.4), 0), (int(self.capWidth * 0.4), self.capHeight), (0, 255, 255), 2)  # Top center boundary
+                    cv2.line(frame , (int(self.capWidth * 0.4), 0), (int(self.capWidth * 0.4), self.capHeight), (0, 255, 255), 2)  # Top center boundary
                     cv2.line(frame, (int(self.capWidth * 0.6), 0), (int(self.capWidth * 0.6), self.capHeight), (0, 255, 255), 2)  # Bottom center boundary
         
         
@@ -127,10 +141,18 @@ class Vision:
                 else:   
                     vision_y = 1  # close 
 
+        # cv2.imshow("Masked frame", mask)
+        # cv2.imshow("Webcam", frame)
+            # cv2.imshow('Line detected Image', line_detected_img)
+
+        # if cv2.waitKey(1) & 0xFF is ord('q'):
+        #     break
+        
         line_detection = self.line_detection(frame)
 
         # no balls detected if ball outside of the lines
         if line_detection:
+            print("line detected!")
             vision_x = -1
             vision_y = -1
 
@@ -160,7 +182,7 @@ class Vision:
         rho = 1  # Distance resolution in pixels of the Hough grid
         theta = np.pi / 180  # Angular resolution in radians of the Hough grid
         threshold = 15  # Minimum number of votes (intersections in Hough grid cell)
-        min_line_length = 100  # Minimum number of pixels making up a line
+        min_line_length = 150  # Minimum number of pixels making up a line
         max_line_gap = 20  # Maximum gap in pixels between connectable line segments
 
         # Create an empty image to draw lines on
@@ -176,7 +198,7 @@ class Vision:
             
             for line in lines:
                 for x1, y1, x2, y2 in line:
-                    if (x2-x1 > 100) or (y2-y1 > 100): # valid lines > 100 pixels wide checking that the line isn't on the tennis ball itself, filtering out short lines (court lines are long)
+                    if (x2-x1 > 125) or (y2-y1 > 125): # valid lines > 100 pixels wide checking that the line isn't on the tennis ball itself, filtering out short lines (court lines are long)
                         valid_line_list.append(line)
 
                         cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 5)
@@ -184,7 +206,7 @@ class Vision:
           
             bounds_averager = [None] * len(valid_line_list)  
         
-        output = True
+        output = False # True if out of bounds 
         
         # Check the y coordinate directly above the max ball
         if self.max_ball is not None:
@@ -230,6 +252,7 @@ class Vision:
                             self.averaged_out_bounds = False
                             print("ball out of bounds")
                             output = True
+                            break
 
         return output      
 
@@ -288,16 +311,3 @@ class Vision:
 
 
 
-class Tennis_ball:
-    pixels = 0
-    x = 0
-    y = 0
-    ball_index = 0
-    def __init__(self,pixels,x,y,ball_index):
-        self.pixels = pixels
-        self.x = x
-        self.y = y
-        self.ball_index = ball_index
-
-    def __str__(self):
-        return "Tennis ball #"+str(self.ball_index)+"\n Pixels"+str(self.pixels)+"\n X:"+str(self.x)+" Y:"+str(self.y)+"\n"
