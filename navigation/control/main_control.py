@@ -60,8 +60,18 @@ FRAME_SKIP = 1
 if __name__ == "__main__":
 
     
-    robot = Robot(State.EXPLORE_START)
+    robot = Robot(State.START)
+    x_init = 0.0
+    y_init = 0.0
+    th_init = 90
+    robot.reset_position(x_init, y_init, th_init)
 
-    robot.move(distance=0.3, speed=1.0)
-    # robot.rotate(180, speed = 0.4)
+
+    robot.move(distance=0.2, speed=1.0)
+    # robot.rotate(-180, speed = 0.4)
+    # robot.move(distance=0.3, speed=1.0)
+
+    print(f"(x,y) = ({round(robot.x,2), round(robot.y,2)})  --- angle = {robot.th}")
     # robot.move(distance=0.3)
+
+   

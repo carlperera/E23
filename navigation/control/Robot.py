@@ -29,6 +29,13 @@ class Robot:
             "PIN_MOTOR2_A_OUT":       14,
             "PIN_MOTOR2_B_OUT":       15
         }
+
+        self.scaling = {
+            "ROTATE": 3.7,
+            "FORWARD": 4.2,
+            "BACK": 1
+        }
+
         self.state = state_init
 
         self.wheel_radius = WHEEL_RAD
@@ -52,7 +59,7 @@ class Robot:
     def reset_position(self, x, y, th):
         self.x = x
         self.y = y
-        self.th = y
+        self.th = th
 
     def reset_encoders(self):
         self.motor1_encoder.steps = 0
@@ -113,11 +120,11 @@ class Robot:
     def update_orientation(self, angle_deg):
         new_angle = (self.th + angle_deg) % 360
 
-        # Adjust to be within -180 to 180 range
-        if new_angle > 180:
-            new_angle -= 360
-        elif new_angle <= -180:
-            new_angle += 360
+        # # Adjust to be within -180 to 180 range
+        # if new_angle > 180:
+        #     new_angle -= 360
+        # elif new_angle <= -180:
+        #     new_angle += 360
         self.th = new_angle
 
     def update_x(self, x_diff):
@@ -196,18 +203,21 @@ class Robot:
     def update_position(self, dist_travelled):
         angle_deg = self.th
 
+        print(angle_deg)
 
+        angle_rad = math.radians(self.th)
         if 0 <= angle_deg < 90:
-            x_diff = math.cos(math.radians(self.th))*dist_travelled
-            y_diff = math.sin(math.radians(self.th))*dist_travelled
+            x_diff = math.cos(angle_rad)*dist_travelled
+            y_diff = math.sin(angle_rad)*dist_travelled
 
+            print("1")
             self.update_x(0-x_diff)
             self.update_y(y_diff)   
 
         elif 90 <= angle_deg < 180:
             angle = 180-angle_deg
-
-            x_diff = math.cos(math.radians(angle))*dist_travelled
+            print("2")
+            x_diff = math.cos(angle_rad)*dist_travelled
             y_diff = math.sin(math.radians(angle))*dist_travelled
 
             self.update_x(x_diff)
@@ -216,6 +226,7 @@ class Robot:
         elif 180 <= angle_deg < 270:
             angle = 270-angle_deg
 
+            print("3")
             x_diff = math.sin(math.radians(angle))*dist_travelled
             y_diff = math.cos(math.radians(angle))*dist_travelled 
 
@@ -225,6 +236,7 @@ class Robot:
         else:
             angle = 360-angle_deg
 
+            print("4")
             x_diff = math.cos(math.radians(angle))*dist_travelled
             y_diff = math.sin(math.radians(angle))*dist_travelled 
 
@@ -266,7 +278,7 @@ class Robot:
         arc_len = self.encoder_steps_to_dist(encoder_steps)
         angle_rad = self.arc_len_to_angle(arc_len)
         angle_deg = math.degrees(angle_rad)
-        return angle_deg 
+        return angle_deg
     
     def calibrate_motors(self, duration = 5):
         """
@@ -314,7 +326,7 @@ class Robot:
         """
         Moves the robot forward by a specific distance at the given speed.
         """
-        encoder_steps = self.dist_to_encoder_steps(distance)/3.9
+        encoder_steps = self.dist_to_encoder_steps(distance)/4
         left_encoder_steps = encoder_steps/0.9
         right_encoder_steps = encoder_steps
        
@@ -350,10 +362,27 @@ class Robot:
             # print(f"left = {self.motor1_pwm.value}       right = {self.motor2_pwm.value}")
 
             time.sleep(0.01)  # Small delay for sensor feedback
+    
+
 
         # Stop motors
         self.motor1_pwm.off()
         self.motor2_pwm.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        """check odometry calcs"""
+
+        # self.update_x(x_diff)
+        # self.update_y(y_diff)
+
+        self.update_position(dist_travelled, scaling_factor = self.scaling["FORWARD"])
+
+        self.reset_encoders()
+
         print("done\n")
 
     def move_backward(self, distance, speed=0.5):
@@ -462,15 +491,15 @@ class Robot:
             :
         """
         encoder_steps = self.calculate_encoder_steps_for_rotation(angle_degrees)
-        print(encoder_steps)    
+
         
         self.reset_encoders()
 
         # Determine direction based on the sign of the angle
         if angle_degrees > 0:
-            self.rotate_clockwise(angle_degrees/4.5, speed)
+            self.rotate_clockwise(angle_degrees/4.2, speed)
         else:
-            self.rotate_anticlockwise(angle_degrees/4.5, speed)
+            self.rotate_anticlockwise(angle_degrees/4.2, speed)
 
 
     def rotate_clockwise(self, angle, speed=0.5):
@@ -495,7 +524,7 @@ class Robot:
             # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             time.sleep(0.01)
 
-        print(f"left steps = {self.motor1_encoder.steps}  --- right = {self.motor2_encoder.steps}")
+
 
         self.motor1_pwm.off()
         self.motor2_pwm.off()
@@ -504,6 +533,15 @@ class Robot:
         self.motor1_in2.off()
         self.motor2_in1.off()
         self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        angle_deg = self.encoder_steps_to_angle(motor2_steps)
+
+        self.update_orientation(0-angle_deg)
+        self.reset_encoders()
+
         
 
     def rotate_anticlockwise(self, angle, speed=0.5):
@@ -528,10 +566,22 @@ class Robot:
             # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             time.sleep(0.01)
 
-        print(f"left steps = {self.motor1_encoder.steps}  --- right = {self.motor2_encoder.steps}")
 
         self.motor1_pwm.off()
         self.motor2_pwm.off()
+
+        self.motor1_in1.off()
+        self.motor1_in2.off()
+        self.motor2_in1.off()
+        self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        angle_deg = self.encoder_steps_to_angle(motor2_steps)
+
+        self.update_orientation(angle_deg)
+        self.reset_encoders()
 
 
     # def handle(self, frame):

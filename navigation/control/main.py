@@ -63,21 +63,24 @@ if __name__ == "__main__":
 
 
     while True: # for each frame from camera 
+        try:
+            # get latest frame
+            ret, frame = vision.camera.read()
 
-        # get latest frame
-        ret, frame = vision.camera.read()
+            if not ret:
+                print("error")
+                break
 
-        if not ret:
-            print("error")
-            break
-
-        robot.handle_state(frame)
-    
+            robot.handle_state(frame)
         
+            
 
 
-        # wait for the next frame - 30 FPS 
-        time.sleep(1/CAMERA_FPS)
+            # wait for the next frame - 30 FPS 
+            time.sleep(1/CAMERA_FPS)
+        
+        except KeyboardInterrupt:
+            
 
 
 
