@@ -59,13 +59,11 @@ if __name__ == "__main__":
 
     robot = Robot(State.EXPLORE_START)
 
-    vision = Vision()
-
 
     while True: # for each frame from camera 
         try:
             # get latest frame
-            ret, frame = vision.camera.read()
+            ret, frame = robot.vision.camera.read()
 
             if not ret:
                 print("error")
@@ -73,13 +71,13 @@ if __name__ == "__main__":
 
             robot.handle_state(frame)
         
-            
-
-
             # wait for the next frame - 30 FPS 
             time.sleep(1/CAMERA_FPS)
         
         except KeyboardInterrupt:
+            print("keyword interrupt")
+            break
+
             
 
 

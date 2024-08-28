@@ -29,7 +29,6 @@ class Vision:
         self.windowHeight = frame.shape[1]
         self.windowWidth = frame.shape[0]
 
-    
         # Apply Gaussian blur to the image to make the tennis balls lines smudge
         blurred_image = cv2.GaussianBlur(frame, (31, 31), 0)
 
@@ -98,9 +97,9 @@ class Vision:
                     cv2.line(frame , (int(self.apWidth * 0.4), 0), (int(self.capWidth * 0.4), self.capHeight), (0, 255, 255), 2)  # Top center boundary
                     cv2.line(frame, (int(self.capWidth * 0.6), 0), (int(self.capWidth * 0.6), self.capHeight), (0, 255, 255), 2)  # Bottom center boundary
         
-                    
         
-        
+        vision_x = -1 
+        vision_y = -1
 
         if ball_list:
             self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -119,24 +118,25 @@ class Vision:
                 else:
                     self.inCentre = 3  # Right third
             
-            return self.inCentre
+                vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-        
-        return -1
+                top_band = self.capHeight*0.4
+                if self.max_ball.y < top_band:
+                    vision_y = 0  # not close 
+                else:   
+                    vision_y = 1  # close 
 
-        # time.sleep(0.1)
+        line_detection = self.line_detection(frame)
 
-        # show the frame to our screen
-        # cv2.imshow("Masked frame", mask)
-        # cv2.imshow("Webcam", frame)
-        # cv2.imshow('Line detected Image', line_detected_img)
+        # no balls detected if ball outside of the lines
+        if line_detection:
+            vision_x = -1
+            vision_y = -1
 
-        
-        
+        return (vision_x, vision_y)
 
-
-    def line_detetion(self, frame):
+    def line_detection(self, frame):
         height = frame.shape[0]
         frame = frame[height // 2:, :]
         
@@ -184,6 +184,8 @@ class Vision:
           
             bounds_averager = [None] * len(valid_line_list)  
         
+        output = True
+        
         # Check the y coordinate directly above the max ball
         if self.max_ball is not None:
             y_below = self.max_ball.y -1  # Slightly above the ball
@@ -211,6 +213,7 @@ class Vision:
                         bounds_averager_counter+=1 
                         # print("ball out of bounds")
                         # break
+                        # output = False
                     else:
                         bounds_averager[bounds_averager_counter] = 1
                         bounds_averager_counter+=1 
@@ -221,21 +224,23 @@ class Vision:
                         # print(average_val)
                         if average_val >= 0.8*len(bounds_averager):
                             self.averaged_out_bounds = True
+                            output = False
                             print("ball within bounds!")
                         else:
                             self.averaged_out_bounds = False
                             print("ball out of bounds")
-                    
-                
+                            output = True
+
+        return output      
 
 
-        # Combine the original frame with the line image
-        if len(frame.shape) == 3:
-            lines_edges = cv2.addWeighted(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), 0.8, line_image, 1, 0)
-        else:
-            lines_edges = cv2.addWeighted(mask, 0.8, line_image, 1, 0)
-        # cv2.imshow("Line Detection", line_image)
-        return lines_edges
+        # # Combine the original frame with the line image
+        # if len(frame.shape) == 3:
+        #     lines_edges = cv2.addWeighted(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), 0.8, line_image, 1, 0)
+        # else:
+        #     lines_edges = cv2.addWeighted(mask, 0.8, line_image, 1, 0)
+        # # cv2.imshow("Line Detection", line_image)
+        # return lines_edges
     
 
     def close(self):
