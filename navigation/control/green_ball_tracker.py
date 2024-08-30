@@ -122,22 +122,15 @@ class Tennis_ball_detect(ABC):
                         bounds_averager[bounds_averager_counter] = 0
                         out_bounds = True
                         bounds_averager_counter+=1 
-                        # print("ball out of bounds")
-                        # break
+                        print("ball out of bounds")
+                        output = True
+                        break
+                        # output = False
                     else:
                         bounds_averager[bounds_averager_counter] = 1
                         bounds_averager_counter+=1 
-                        # print("Ball within bounds!")
-                    if bounds_averager_counter == len(bounds_averager)-1: # resetting counter
-                        bounds_averager_counter = 0
-                        average_val = sum(x for x in bounds_averager if x is not None)
-                        # print(average_val)
-                        if average_val >= 0.8*len(bounds_averager):
-                            self.averaged_out_bounds = True
-                            print("ball within bounds!")
-                        else:
-                            self.averaged_out_bounds = False
-                            print("ball out of bounds")
+                        print("Ball within bounds!")
+                        output = False
                     
                 
 
@@ -245,12 +238,12 @@ class Tennis_ball_detect(ABC):
                         cv2.putText(image, "Radius: " + str(radius), (center[0] + 10, center[1] + 40),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
                         # Optional: Draw vertical lines for center region boundaries
-                        cv2.line(image , (int(capWidth * 0.4), 0), (int(capWidth * 0.4), capHeight), (0, 255, 255), 2)  # Top center boundary
-                        cv2.line(image, (int(capWidth * 0.6), 0), (int(capWidth * 0.6), capHeight), (0, 255, 255), 2)  # Bottom center boundary
+                        cv2.line(image , (int(capWidth * 0.45), 0), (int(capWidth * 0.45), capHeight), (0, 255, 255), 2)  # Top center boundary
+                        cv2.line(image, (int(capWidth * 0.55), 0), (int(capWidth * 0.55), capHeight), (0, 255, 255), 2)  # Bottom center boundary
          
                         
             
-            
+            output = -1 
 
             if ball_list:
                 self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -259,8 +252,8 @@ class Tennis_ball_detect(ABC):
                     cv2.circle(image, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                     # print("Max ball is ball: ",max_ball.ball_index)
 
-                    left_band = capWidth *0.4
-                    right_band = capWidth * 0.6
+                    left_band = capWidth *0.45
+                    right_band = capWidth * 0.55
 
                     if self.max_ball.x < left_band:
                         self.inCentre = 2  # Left third
@@ -269,9 +262,10 @@ class Tennis_ball_detect(ABC):
                     else:
                         self.inCentre = 3  # Right third
 
+                    output = self.inCentre
                     # print(f"inCentre: {inCentre}")
 
-                    
+            print(output)      
                 
             # time.sleep(0.1)
 

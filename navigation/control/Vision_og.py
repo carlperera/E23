@@ -108,8 +108,8 @@ class Vision:
                     cv2.putText(frame, "Radius: " + str(radius), (center[0] + 10, center[1] + 40),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
                     # Optional: Draw vertical lines for center region boundaries
-                    cv2.line(frame , (int(self.capWidth * 0.4), 0), (int(self.capWidth * 0.4), self.capHeight), (0, 255, 255), 2)  # Top center boundary
-                    cv2.line(frame, (int(self.capWidth * 0.6), 0), (int(self.capWidth * 0.6), self.capHeight), (0, 255, 255), 2)  # Bottom center boundary
+                    # cv2.line(frame , (int(self.capWidth * 0.4), 0), (int(self.capWidth * 0.4), self.capHeight), (0, 255, 255), 2)  # Top center boundary
+                    # cv2.line(frame, (int(self.capWidth * 0.6), 0), (int(self.capWidth * 0.6), self.capHeight), (0, 255, 255), 2)  # Bottom center boundary
         
         
         vision_x = -1 
@@ -122,8 +122,8 @@ class Vision:
                 cv2.circle(frame, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                 # print("Max ball is ball: ",max_ball.ball_index)
 
-                left_band = self.capWidth *0.3
-                right_band = self.capWidth * 0.7
+                left_band = self.capWidth *0.4
+                right_band = self.capWidth * 0.6
 
                 if self.max_ball.x < left_band:
                     self.inCentre = 2  # Left third
@@ -135,7 +135,8 @@ class Vision:
                 vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-                top_band = self.capHeight*0.7
+                top_band = self.capHeight*0.8 # opposite because counts top down in canvas
+                
                 if self.max_ball.y < top_band:
                     vision_y = 0  # not close 
                 else:   
@@ -233,16 +234,16 @@ class Vision:
                         bounds_averager[bounds_averager_counter] = 0
                         out_bounds = True
                         bounds_averager_counter+=1 
-                        # print("ball out of bounds")
-                        # break
-                        # output = False
+                        print("ball out of bounds")
                         output = True
                         break
+                        # output = False
                     else:
                         bounds_averager[bounds_averager_counter] = 1
                         bounds_averager_counter+=1 
+                        print("Ball within bounds!")
                         output = False
-                        # print("Ball within bounds!")
+
                     # if bounds_averager_counter == len(bounds_averager)-1: # resetting counter
                     #     bounds_averager_counter = 0
                     #     average_val = sum(x for x in bounds_averager if x is not None)

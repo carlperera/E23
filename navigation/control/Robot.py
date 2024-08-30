@@ -27,13 +27,13 @@ class Constants(Enum):
 
 class Speeds(Enum):
     MOVING_TO_TARGET = 1.0
-    ROTATING_EXPLORE = 0.4
+    ROTATING_EXPLORE = 0.2
     CLOSE_TO_TARGET = 0.4
-    ROTATE_TO_TARGET = 0.4
+    ROTATE_TO_TARGET = 0.15
     RETURN_ROTATE = 0.8
     ROTATE_TO_CENTRE = 0.6
     RETREAT_BACK = 0.6
-    ROTATING_TO_TARGET = 0.6
+    MOVING_TO_CENTRE = 0.8 
 
 
 
@@ -76,7 +76,7 @@ class Robot:
 
         self.calibrated_close_dist = 0.3
         self.calibrated_retreat_dist = 0.3 
-        self.calibrated_centre_move = 3.0
+        self.calibrated_centre_move = 4.0
         
         self.left_motor_scale = 1.0
         self.state = state_init
@@ -87,7 +87,7 @@ class Robot:
         self.motor2_multiplier = 1 
         
 
-        self.close_to_target_calibration = 0.35
+        self.close_to_target_calibration = 0.15
 
         self.motor1_pwm = gpiozero.PWMOutputDevice(pin=self.pins["PIN_MOTOR1_PWM_ENABLE"],active_high=True,initial_value=0,frequency=100)
         self.motor1_in1 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR1_IN1"])
@@ -181,44 +181,13 @@ class Robot:
         self.motor1_in1.off()
         self.motor1_in2.on()
         self.motor2_in1.on()
-        self.motor2_in2.on()
+        self.motor2_in2.off()
 
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
+        
 
-    # def update_position(self, dist):
-    #     angle_deg = self.th
 
-    #     if 0 <= angle_deg < 90:
-    #         x_diff = math.cos(math.radians(angle_deg))*dist
-    #         y_diff = math.sin(math.radians(angle_deg))*dist
-    #         self.update_x(0-x_diff)
-    #         self.update_y(y_diff)
-
-    #     elif 90 <= angle_deg < 180:
-    #         angle_deg = 180 - angle_deg 
-    #         x_diff = math.cos(math.radians(angle_deg)) *dist
-    #         y_diff = math.sin(math.radians(angle_deg))*dist
-
-    #         self.update_x(x_diff)
-    #         self.update_y(y_diff)
-
-    #     elif 180 <= angle_deg< 270:
-    #         angle_deg = 180 - angle_deg
-    #         x_diff = math.cos(math.radians(angle_deg)) *dist
-    #         y_diff = math.sin(math.radians(angle_deg))*dist
-    #         self.update_x(x_diff)
-    #         self.update_y(0-y_diff)
-
-    #     else:
-    #         angle_deg = 360-angle_deg
-    #         x_diff = math.cos(math.radians(angle_deg)) *dist
-    #         y_diff = math.sin(math.radians(angle_deg))*dist
-
-    #         self.update_x(0-x_diff)
-    #         self.update_y(0-y_diff)
-
-    
     def update_orientation(self, angle_deg):
         new_angle = (self.th + angle_deg) % 360
         self.th = new_angle
@@ -243,9 +212,10 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
-        angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-
+        angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
+        angle_deg = self.angle_scale_down(angle_raw)
         self.update_orientation(0-angle_deg)
+
         self.reset_encoders()
     
     def stop_rotating_anticlockwise(self):
@@ -261,8 +231,8 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
-        angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-
+        angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
+        angle_deg = self.angle_scale_down(angle_raw)
         self.update_orientation(angle_deg)
 
         self.reset_encoders()
@@ -280,7 +250,11 @@ class Robot:
         self.motor2_pwm.value = speed 
 
     def dist_scale_down(self, dist_raw):
-        dist_actual = (dist_raw - Constants.FORWARD.value)/Scaling.FORWARD.value
+        dist_actual = 0 
+        
+        if dist_raw > Constants.FORWARD.value:
+            dist_actual = (dist_raw - Constants.FORWARD.value)/Scaling.FORWARD.value
+        print(f"dist scaled dowwn = {dist_actual}")
         return dist_actual 
 
     def dist_scale_up(self, dist_actual):
@@ -296,7 +270,7 @@ class Robot:
         motor2_steps = self.motor2_encoder.steps
 
         dist_raw = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
-        dist_travelled = self.dist_scale_down(dist_raw)
+        dist_travelled = self.dist_scale_up(dist_raw)
 
         """check odometry calcs"""
 
@@ -311,14 +285,13 @@ class Robot:
     def update_position(self, dist_travelled):
         angle_deg = self.th
 
-        print(angle_deg)
 
         angle_rad = math.radians(self.th)
         if 0 <= angle_deg < 90:
             x_diff = math.cos(angle_rad)*dist_travelled
             y_diff = math.sin(angle_rad)*dist_travelled
 
-            print("1")
+            # print("1")
             self.update_x(0-x_diff)
             self.update_y(y_diff)   
 
@@ -339,7 +312,7 @@ class Robot:
             y_diff = math.cos(math.radians(angle))*dist_travelled 
 
             self.update_x(x_diff)
-            self.update_y(y_diff)  
+            self.update_y(0-y_diff)  
 
         else:
             angle = 360-angle_deg
@@ -365,15 +338,20 @@ class Robot:
         
         """check odometry calcs"""
 
-
-        
-
     def stop_backwards(self):
         self.motor1_pwm.off()
         self.motor2_pwm.off()
 
         self.motor1_in2.off()
         self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_raw = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+        dist_travelled = self.dist_scale_down(dist_raw)
+
+        self.update_position(dist_travelled)
 
 
     def encoder_steps_to_angle(self, encoder_steps):
@@ -430,7 +408,6 @@ class Robot:
     def dist_output_input_scaling(self, dist_input):
         dist_output = (dist_input -Constants.FORWARD.value)/ Scaling.FORWARD.value
         return dist_output
-
 
 
     def move_forward(self, distance, speed=0.5):
@@ -494,7 +471,7 @@ class Robot:
 
         self.reset_encoders()
 
-        print("done\n")
+        # print("done\n")
 
     def move_backward(self, distance, speed=0.5):
         """
@@ -566,7 +543,7 @@ class Robot:
         return encoder_steps
 
     def encoder_steps_to_dist(self, encoder_steps):
-        wheel_rotations = encoder_steps/(CPR* GEAR_RATIO)
+        wheel_rotations = abs(encoder_steps)/(CPR* GEAR_RATIO)
         dist = wheel_rotations*(2 * math.pi * self.wheel_radius) 
         return dist
 
@@ -621,7 +598,7 @@ class Robot:
         return angle_actual 
 
     def angle_scale_up(self, angle_actual):
-        angle_raw = angle_actual * Constants.ROTATE.value + Scaling.ROTATE.value
+        angle_raw = angle_actual * Scaling.ROTATE.value + Constants.ROTATE.value
         return angle_raw
 
 
@@ -710,6 +687,9 @@ class Robot:
     def calc_rotated_angle(self):
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
+
+        print(f"motor1 steps = {motor1_steps} --- motor2_steps = {motor2_steps}")
+
         angle_deg= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
 
         return angle_deg
@@ -723,9 +703,11 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
         steps = max(motor1_steps, motor2_steps)
+        print(f"STEPSSSSS: {steps}")
+        time.sleep(0.1)
 
         dist_raw = self.encoder_steps_to_dist(steps)
-        dist_actual = self.dist_scale_down(dist_raw)
+        dist_actual = self.dist_scale_up(dist_raw)
         return dist_actual
 
     def handle_state(self, frame):
@@ -735,6 +717,9 @@ class Robot:
         print(f"vision_x = {vision_x}  --- vision_y = {vision_y}")
 
         old_state = self.state
+
+
+        print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
         match self.state:
             
             case State.START:
@@ -743,7 +728,7 @@ class Robot:
                         self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_EXPLORE  # rotate on the spot
                     case 2: #   # ball detected on left side of frame
-                        self.start_rotating_anticlockwise(speed=Speeds.ROTATING_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case 1: # ball in frame in centre 
                         if vision_y == 1: # close 
@@ -760,19 +745,22 @@ class Robot:
                 match vision_x:
                     case -1: # nothing detected
                         # check if already spun 360 
-                        angle_rotated = self.calc_rotated_angle() 
+                        angle_raw = self.calc_rotated_angle() 
+                        angle_rotated = self.angle_scale_up(angle_raw)
 
-                        # TODO - fix this into two?
-                        if angle_rotated >= 180:
+                        print(f"angle_rotated = {angle_rotated}")
+
+                        if angle_rotated >= 90:
                             self.stop_rotating_anticlockwise()
-                            self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
-                            self.state = State.ROTATE_EXPLORE2
-                            # self.rotate_to_face_centre()
-
-                    case 2: # left 
+                            self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
+                            self.state = State.ROTATE_FACE_CENTRE
+                        else:
+                            # keep spinning 
+                            pass
+                    case 2: # left  
                         # keep spinning 
                         self.stop_rotating_anticlockwise()
-                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
                         self.stop_rotating_anticlockwise() # stop rotating
@@ -792,18 +780,22 @@ class Robot:
                 match vision_x:
                     case -1: # nothing detected
                         # check if already spun 360 
-                        angle_rotated = self.calc_rotated_angle() 
+        
+                        angle_raw = self.calc_rotated_angle() 
+                        angle_rotated = self.angle_scale_up(angle_raw)
+
+                        print(f"angle_rotated = {angle_rotated}")
 
                         if angle_rotated >= 180:
                             self.stop_rotating_anticlockwise()
-                    
-                            self.state = self.start_rotating_anticlockwise(Speeds.ROTATE_TO_CENTRE.value)
+                           
                             self.state= State.ROTATE_FACE_CENTRE
+                            # self.rotate_to_face_centre()
 
                     case 2: # left 
                         # keep spinning 
                         self.stop_rotating_anticlockwise()
-                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
                         self.stop_rotating_anticlockwise() # stop rotating
@@ -819,22 +811,30 @@ class Robot:
                         self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
+        
             case State.ROTATE_FACE_CENTRE:
                 match vision_x:
                     case -1: # nothing detected, keep spinning
-                        if self.th >= 135:
+                        angle_raw = self.calc_rotated_angle() 
+                        angle_rotated = self.angle_scale_up(angle_raw)
+
+                        print(f"angle_rotated = {angle_rotated}")
+
+                        if angle_rotated >= 45: # stop rotating 
                             self.stop_rotating_anticlockwise()
+                            print(f"angle_rotated = {angle_rotated}")
+                            self.start_forward(Speeds.MOVING_TO_CENTRE.value)
                             self.state = State.MOVE_TO_CENTRE
                         else:
                             pass # keep rotating
                 
                     case 2: # left 
                         # keep spinning     
-                        self.stop_rotating_anticlockwise()
+                        self.stop_rotating_clockwise()
                         self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
-                        self.stop_rotating_anticlockwise() # stop rotating
+                        self.stop_rotating_clockwise() # stop rotating
 
                         if vision_y == 1: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
@@ -843,7 +843,7 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
-                        self.stop_rotating_anticlockwise()
+                        self.stop_rotating_clockwise()
                         self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
                 
@@ -855,7 +855,7 @@ class Robot:
                         if distance_travelled >= self.calibrated_centre_move: 
                             self.stop_forward()
                             self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
-                            self.state = State.ROTATE_EXPLORE
+                            self.state = State.ROTATE_EXPLORE2
                 
                     case 2: # left 
                         # keep spinning     
@@ -904,6 +904,7 @@ class Robot:
                         self.start_rotating_anticlockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_EXPLORE
                     case 2:  # ball still to left, keep rotating anticlock
+                        print("in rotate left, keep in rotate left")
                         pass 
                     case 1: # ball in centre of frame so start moving forward
                         self.stop_rotating_anticlockwise()
@@ -934,7 +935,7 @@ class Robot:
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: # not close 
-                           pass # same thing
+                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                     case 3:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
                         self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
@@ -946,7 +947,11 @@ class Robot:
 
                 distance_moved = calc_dist_moved 
 
-                if distance_moved >= self.close_to_target_calibration:
+                # dist_to_move = self.calibrated_close_dist +  self.close_to_target_calibration
+                dist_to_move = 55/100 
+                print(f"dist_to_move = {dist_to_move}")
+
+                if distance_moved >= dist_to_move:  # blind-spot distance +  bottom frame dist=  0.3 + 0.15
                     self.stop_forward()
                     print("touched ball!")
                     self.start_backward(speed=Speeds.RETREAT_BACK.value)
@@ -965,7 +970,7 @@ class Robot:
                 
             
             case State.ROTATE_TO_FACE_START:
-            
+                
                 pass
 
             

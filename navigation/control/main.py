@@ -9,6 +9,7 @@ import math
 from threading import Thread, Lock
 from functools import partial
 from State import State
+import cv2
 
 # ----------- CONSTANTS -------------
 CPR = 48
@@ -56,11 +57,14 @@ FRAME_SKIP = 1
 """
 
 if __name__ == "__main__":
+    count_frames = 0
 
     vision = Vision()
     time.sleep(2)
 
     robot = Robot(State.START, vision=vision)
+
+    
  
 
     while True: # for each frame from camera 
@@ -71,12 +75,16 @@ if __name__ == "__main__":
             if not ret:
                 print("error")
                 break
-
+                
+    
             robot.handle_state(frame)
+            # cv2.imshow('Live feed',frame)
+            
         
             # wait for the next frame - 30 FPS 
             time.sleep(1/CAMERA_FPS)
-        
+            # if cv2.waitKey(1) & 0xFF is ord('q'):
+            #     break
         except KeyboardInterrupt:
             print("keyword interrupt")
             break
