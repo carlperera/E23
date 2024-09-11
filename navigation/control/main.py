@@ -8,7 +8,7 @@ import gpiozero
 import math
 from threading import Thread, Lock
 from functools import partial
-from State import State
+from State import State, StartPosition
 import cv2
 
 # ----------- CONSTANTS -------------
@@ -60,18 +60,22 @@ if __name__ == "__main__":
     count_frames = 0
 
     vision = Vision()
+   
     time.sleep(2)
 
-    robot = Robot(State.START, vision=vision)
+    start_pos = StartPosition.LEFT
+    robot = Robot(State.START, vision=vision, start_pos = start_pos)
 
     
- 
-
     while True: # for each frame from camera 
         try:
             # get latest frame
-            ret, frame = vision.camera.read()
-
+            
+            if robot.state == State.CLOSE_TO_TARGET:
+                ret, frame = vision.camera_secondary.read()
+            else:
+                ret, frame = vision.camera_primary.read()
+                
             if not ret:
                 print("error")
                 break

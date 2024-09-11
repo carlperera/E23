@@ -10,17 +10,37 @@ class State(Enum):
 
     ROTATE_TO_CENTRE = 4 
     MOVE_TO_CENTRE = 5
-    # ROTATE_EXPLORE is the next step after moving to the centre 
 
     MOVE_TO_TARGET = 7 # moving to target but not close enough
     CLOSE_TO_TARGET = 8  # close to target 
-    
     START_RETURN = 9 # move back slightly
     ROTATE_TO_FACE_START = 10 # move to face the start point 
     MOVE_TO_START = 11 # move to the start, once arrvied at start, swtich back to start state 
-
-
     ROTATE_EXPLORE2 = 12
-
     ROTATE_FACE_CENTRE = 13
+    ROTATE_EXPLORE_FULL = 14
+    ROTATING_TO_FACE_START = 15
+
+class StartPosition(Enum):
+    """
+    Starting on LEFT
+        
+    Starting on RIGHT
+
+    """
+    LEFT = 0  
+    RIGHT = 1
+
+"""
+1) robot starts out either facing 
+    - hidden parameter for now 
+2) rotate 90 to get the full field of view 
+    2.1) if spotted a ball, go to it
+    2.2) else after full 90, rotate to 45 and go to centre of court 
+3) 
+
+4) 
+
+
+"""
     

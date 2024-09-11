@@ -3,6 +3,7 @@ import gpiozero
 import math
 from State import State
 from Vision import Vision
+from State import StartPosition
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -35,48 +36,29 @@ class Speeds(Enum):
     RETREAT_BACK = 0.6
     MOVING_TO_CENTRE = 0.8 
 
+class PINS(Enum):
+    PIN_MOTOR1_IN1 =         17
+    PIN_MOTOR1_IN2 =          27
+    PIN_MOTOR1_PWM_ENABLE =  18
+    PIN_MOTOR1_A_OUT =      21
+    PIN_MOTOR1_B_OUT =       20
+    PIN_MOTOR2_IN1 =        23
+    PIN_MOTOR2_IN2 =       24
+    PIN_MOTOR2_PWM_ENABLE =  9
+    PIN_MOTOR2_A_OUT =    14
+    PIN_MOTOR2_B_OUT =     15
 
+class RotateDirection(Enum):
+    ANTICLOCKWISE = 0 
+    CLOCKWISE = 1 
 
 class Robot:    
 
-    def __init__(self, state_init, vision: Vision) -> None:
-        self.pins = {
-            "PIN_MOTOR1_IN1":         17,
-            "PIN_MOTOR1_IN2":         27, 
-            "PIN_MOTOR1_PWM_ENABLE":  18, 
-            "PIN_MOTOR1_A_OUT":       21,
-            "PIN_MOTOR1_B_OUT":       20,
-            "PIN_MOTOR2_IN1":         23,
-            "PIN_MOTOR2_IN2":         24,
-            "PIN_MOTOR2_PWM_ENABLE":   9, 
-            "PIN_MOTOR2_A_OUT":       14,
-            "PIN_MOTOR2_B_OUT":       15
-        }
-
-        # self.scaling = {
-        #     "ROTATE": 4.2 ,  # 3.7
-        #     "FORWARD": 3.486, # 4.2
-        #     "BACK": 1.0
-        # }
-
-        # self.constants = {
-        #     "ROTATE": 3/100,
-        #     "FORWARD": 4.282/100
-        # }
-
-        # self.speeds = {
-        #     "MOVING_TO_TARGET": 1.0,
-        #     "ROTATING_EXPLORE": 0.4,
-        #     "CLOSE_TO_TARGET": 0.4,
-        #     "ROTATE_TO_TARGET": 0.4,
-        #     "RETURN_ROTATE": 0.8,
-        #     "ROTATE_TO_CENTRE": 0.6,
-        #     "RETREAT_BACK": 0.6
-        # }
+    def __init__(self, state_init, vision: Vision, start_pos: StartPosition) -> None:
 
         self.calibrated_close_dist = 0.3
         self.calibrated_retreat_dist = 0.3 
-        self.calibrated_centre_move = 4.0
+        self.calibrated_centre_move = 3.0
         
         self.left_motor_scale = 1.0
         self.state = state_init
@@ -87,17 +69,18 @@ class Robot:
         self.motor2_multiplier = 1 
         
 
-        self.close_to_target_calibration = 0.15
+        self.close_to_target_calibration = 0.35
 
-        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=self.pins["PIN_MOTOR1_PWM_ENABLE"],active_high=True,initial_value=0,frequency=100)
-        self.motor1_in1 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR1_IN1"])
-        self.motor1_in2 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR1_IN2"])
-        self.motor1_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR1_A_OUT"], b=self.pins["PIN_MOTOR1_B_OUT"],max_steps=100000) 
+        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINS.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
+        self.motor1_in1 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN1.value)
+        self.motor1_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN2.value)
+        self.motor1_encoder = gpiozero.RotaryEncoder(a=PINS.PIN_MOTOR1_A_OUT.value, b=PINS.PIN_MOTOR1_B_OUT.value,max_steps=100000) 
 
-        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=self.pins["PIN_MOTOR2_PWM_ENABLE"],active_high=True,initial_value=0,frequency=100)
-        self.motor2_in1 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR2_IN1"])
-        self.motor2_in2 = gpiozero.OutputDevice(pin=self.pins["PIN_MOTOR2_IN2"])
-        self.motor2_encoder = gpiozero.RotaryEncoder(a=self.pins["PIN_MOTOR2_A_OUT"], b=self.pins["PIN_MOTOR2_B_OUT"],max_steps=100000) 
+        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=PINS.PIN_MOTOR2_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
+        self.motor2_in1 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR2_IN1.value)
+        self.motor2_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR2_IN2.value)
+        self.motor2_encoder = gpiozero.RotaryEncoder(a=PINS.PIN_MOTOR2_A_OUT.value, b=PINS.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
+
 
         self.x = 0
         self.y = 0
@@ -711,8 +694,12 @@ class Robot:
         return dist_actual
 
     def handle_state(self, frame):
-        # track ball and line detect
-        vision_x, vision_y = self.vision.track_ball(frame)
+        if self.state == State.CLOSE_TO_TARGET: 
+            camNum = 2 
+        else:
+            camNum = 1
+        # track ball and line detect  
+        vision_x, vision_y = self.vision.track_ball(frame, camNum)
 
         print(f"vision_x = {vision_x}  --- vision_y = {vision_y}")
 
@@ -897,6 +884,38 @@ class Robot:
                     case 3:  # ball to right of the frame, keep rotating clockwise     
                         pass
 
+            case State.ROTATE_EXPLORE_FULL:
+                match vision_x:
+                    case -1: # nothing detected
+                        # check if already spun 360 
+                        angle_rotated = self.calc_rotated_angle() 
+
+                        # TODO - fix this into two?
+                        if angle_rotated >= 360:
+                            self.stop_rotating_anticlockwise()
+                            self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                            self.state = State.ROTATE_EXPLORE2
+                            # self.rotate_to_face_centre()
+
+                    case 2: # left 
+                        # keep spinning 
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.state = State.ROTATE_LEFT_TARGET 
+                    case 1:
+                        self.stop_rotating_anticlockwise() # stop rotating
+
+                        if vision_y == 1: # close 
+                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else:
+                            self.move_forward(Speeds.MOVING_TO_TARGET.value)
+                            self.state = State.MOVE_TO_TARGET
+                    case 3: # to the right 
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.state = State.ROTATE_RIGHT_TARGET 
+
             case State.ROTATE_LEFT_TARGET:
                 match vision_x:
                     case -1: # the ball has left the frame 
@@ -967,15 +986,64 @@ class Robot:
                     self.start_rotating_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
                     self.angle_to_rotate_to 
                     self.state = State.ROTATE_TO_FACE_START
-                
-            
-            case State.ROTATE_TO_FACE_START:
-                
-                pass
 
-            
+            case State.START_RETURN: 
+                distance_moved = self.get_dist_moved()
+                
+                if distance_moved >= self.calibrated_retreat_dist:
+                    self.stop_backwards()
+                    self.start_rotating_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
+                    self.angle_to_rotate_to 
+                    self.state = State.ROTATE_TO_FACE_START
+                
+            case State.ROTATE_TO_FACE_START:
+                th_current = self.th
+                x_current = self.x
+                y_current = self.y
+
+                # taken from vishGPT
+                match self.start_pos:
+                    case StartPosition.LEFT:
+                        theta_rad = math.atan2(y_current,x_current)
+                        theta_deg = math.degrees(theta_rad)
+                
+                    case StartPosition.RIGHT:
+                        theta_rad = math.atan2(y_current,-x_current)
+                        theta_deg = math.degrees(theta_rad)
+
+                ang_diff = (theta_deg - th_current) % 360
+                if ang_diff > 180: # turn anticlockwise 
+                    self.start_rotating_anticlockwise(Speeds.RETURN_ROTATE.value)
+                    self.angle_to_rotate_to = 360 - ang_diff
+                    self.rotate_direction = RotateDirection.ANTICLOCKWISE
+
+                else: # turn clockwise 
+                    self.start_rotating_clockwise(Speeds.RETURN_ROTATE.value)
+                    self.angle_to_rotate_to = ang_diff
+                    self.rotate_direction = RotateDirection.CLOCKWISE
+                self.state = State.ROTATING_TO_FACE_START
+
+            case State.ROTATING_TO_FACE_START:
+                angle_rotated = self.calc_rotated_angle() 
+
+                if angle_rotated >= self.angle_to_rotate_to:
+                    if self.rotate_direction is RotateDirection.ANTICLOCKWISE:
+                        self.stop_rotating_anticlockwise()
+                    else:
+                        self.stop_rotating_anticlockwise()
+                    
+                    self.start_forward(speed = Speeds.MOVING_TO_START)
+                    self.state = State.MOVE_TO_START
+        
             case State.MOVE_TO_START: 
-                pass
+                
+                # check if you've moved to start position (or close to)
+                x_current = self.x
+                y_current = self.y
+
+                if x_current <= 0.2 and y_current <= 0.2: 
+                    self.stop_forward()
+                    self.state = State 
 
         print(f"old state = {old_state.name} --- new-state = {self.state.name}")
 
