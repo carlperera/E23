@@ -64,7 +64,7 @@ if __name__ == "__main__":
     time.sleep(2)
 
     start_pos = StartPosition.LEFT
-    robot = Robot(State.START, vision=vision, start_pos = start_pos)
+    robot = Robot(vision=vision, start_pos = start_pos)
 
     
     while True: # for each frame from camera 

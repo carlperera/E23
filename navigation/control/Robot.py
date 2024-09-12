@@ -25,6 +25,8 @@ class Scaling(Enum):
 class Constants(Enum):
     ROTATE = 3 / 100
     FORWARD = 4.282 / 100
+    TRAY_BALL_THRESHOLD = 4
+    SIMULATION_DURATION_S = 10*60
 
 class Speeds(Enum):
     MOVING_TO_TARGET = 1.0
@@ -54,23 +56,29 @@ class RotateDirection(Enum):
 
 class Robot:    
 
-    def __init__(self, state_init, vision: Vision, start_pos: StartPosition) -> None:
+    def __init__(self, vision: Vision, start_pos: StartPosition) -> None:
 
+        # ----------------  Specifications ----------------
+        self.wheel_radius = WHEEL_RAD
+        self.simulation_duration_s = 
+        # ----------------  Calibration ----------------
         self.calibrated_close_dist = 0.3
         self.calibrated_retreat_dist = 0.3 
         self.calibrated_centre_move = 3.0
-        
         self.left_motor_scale = 1.0
-        self.state = state_init
-
-        self.wheel_radius = WHEEL_RAD
-
         self.motor1_multiplier = 1
         self.motor2_multiplier = 1 
         
+        # ----------------  Start Position ----------------
+        self.start_pos = start_pos
+        if start_pos is StartPosition.LEFT:
+            self.state = State.START_LEFT
+        else:
+            self.state = State.START_RIGHT
 
         self.close_to_target_calibration = 0.35
 
+        # ----------------  ENCODER SETUP ----------------
         self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINS.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
         self.motor1_in1 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN1.value)
         self.motor1_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN2.value)
@@ -81,19 +89,21 @@ class Robot:
         self.motor2_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR2_IN2.value)
         self.motor2_encoder = gpiozero.RotaryEncoder(a=PINS.PIN_MOTOR2_A_OUT.value, b=PINS.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
 
-
+        # ----------------  START ODOMETRY POSITION ----------------
         self.x = 0
         self.y = 0
         self.th = 0
-
         self.reset_position(0.0,0.0,0.0)
         self.reset_encoders()
 
-        self.state = state_init
-
+        # ----------------  VISION ----------------
         self.vision = vision
 
-        self.angle_to_rotate_to = None 
+        self.angle_to_rotate_to = None
+        
+        # ----------------  BALLS - TRAY ----------------
+        self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
+        
 
     def reset_position(self, x, y, th):
         self.x = x
@@ -705,7 +715,6 @@ class Robot:
 
         old_state = self.state
 
-
         print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
         match self.state:
             
@@ -884,7 +893,7 @@ class Robot:
                     case 3:  # ball to right of the frame, keep rotating clockwise     
                         pass
 
-            case State.ROTATE_EXPLORE_FULL:
+            case State.ROTATE_EXPLORE_FULL_PRIMARY:
                 match vision_x:
                     case -1: # nothing detected
                         # check if already spun 360 
