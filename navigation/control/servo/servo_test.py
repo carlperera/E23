@@ -3,16 +3,19 @@ from time import sleep
 from enum import Enum
 import RPi.GPIO as GPIO
 
-
 class SERVO_PINS(Enum):
     PIN_SERVO1_PWM = 12
+    PIN_SERVO2_PWM = 13
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(SERVO_PINS.PIN_SERVO1_PWM.value, GPIO.OUT)
-pwm = GPIO.PWM(SERVO_PINS.PIN_SERVO1_PWM.value, 50)
-pwm.start(5)
+GPIO.setup(SERVO_PINS.PIN_SERVO2_PWM.value, GPIO.OUT)
+pwm1 = GPIO.PWM(SERVO_PINS.PIN_SERVO1_PWM.value, 50)
+pwm2 = GPIO.PWM(SERVO_PINS.PIN_SERVO2_PWM.value,50)
+pwm1.start(0)
+pwm2.start(0)
 
-def setAngle(angle):
+def setAngle(pwm,angle):
     duty = angle / 18 + 3
     GPIO.output(SERVO_PINS.PIN_SERVO1_PWM.value, True)
     pwm.ChangeDutyCycle(duty)
@@ -34,23 +37,23 @@ def setAngle(angle):
 def rotate_90():
     try:
         while True:
-            setAngle(30)
+            setAngle(pwm1, 30)
             sleep(1) # sleep 1 second
-            setAngle(135)
+            setAngle(pwm1, 135)
             sleep(1) # sleep 1 second
     except KeyboardInterrupt:
-        pwm.stop()
+        pwm1.stop()
         GPIO.cleanup()
 
 def rotate_180():
     try:
         while True:
-            setAngle(0)
+            setAngle(pwm2,-15)
             sleep(1)
-            setAngle(180)
+            setAngle(pwm2,160)
             sleep(1)
     except KeyboardInterrupt:
-        pwm.stop()
+        pwm1.stop()
         GPIO.cleanup()
 
 # rotate_90() 

@@ -4,6 +4,8 @@ import math
 from State import State
 from Vision import Vision
 from State import StartPosition
+from Claw import Claw
+from Flap import Flap
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -38,7 +40,7 @@ class Speeds(Enum):
     RETREAT_BACK = 0.6
     MOVING_TO_CENTRE = 0.8 
 
-class PINS(Enum):
+class PINSMOTOR(Enum):
     PIN_MOTOR1_IN1 =         17
     PIN_MOTOR1_IN2 =          27
     PIN_MOTOR1_PWM_ENABLE =  18
@@ -56,11 +58,12 @@ class RotateDirection(Enum):
 
 class Robot:    
 
-    def __init__(self, vision: Vision, start_pos: StartPosition) -> None:
+    def __init__(self, vision: Vision, claw: Claw, start_pos: StartPosition) -> None:
 
         # ----------------  Specifications ----------------
         self.wheel_radius = WHEEL_RAD
-        self.simulation_duration_s = 
+        self.simulation_duration_s = 10*60 # the robot should stop after this time (KAPOOTY TIME)
+
         # ----------------  Calibration ----------------
         self.calibrated_close_dist = 0.3
         self.calibrated_retreat_dist = 0.3 
@@ -79,15 +82,16 @@ class Robot:
         self.close_to_target_calibration = 0.35
 
         # ----------------  ENCODER SETUP ----------------
-        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINS.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
-        self.motor1_in1 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN1.value)
-        self.motor1_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR1_IN2.value)
-        self.motor1_encoder = gpiozero.RotaryEncoder(a=PINS.PIN_MOTOR1_A_OUT.value, b=PINS.PIN_MOTOR1_B_OUT.value,max_steps=100000) 
+        self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINSMOTOR.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
+        self.motor1_in1 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR1_IN1.value)
+        self.motor1_in2 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR1_IN2.value)
+        self.motor1_encoder = gpiozero.RotaryEncoder(a=PINSMOTOR.PIN_MOTOR1_A_OUT.value, b=PINSMOTOR.PIN_MOTOR1_B_OUT.value,max_steps=100000) 
 
-        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=PINS.PIN_MOTOR2_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
-        self.motor2_in1 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR2_IN1.value)
-        self.motor2_in2 = gpiozero.OutputDevice(pin=PINS.PIN_MOTOR2_IN2.value)
-        self.motor2_encoder = gpiozero.RotaryEncoder(a=PINS.PIN_MOTOR2_A_OUT.value, b=PINS.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
+        self.motor2_pwm = gpiozero.PWMOutputDevice(pin=PINSMOTOR.PIN_MOTOR2_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
+        self.motor2_in1 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR2_IN1.value)
+        self.motor2_in2 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR2_IN2.value)
+        self.motor2_encoder = gpiozero.RotaryEncoder(a=PINSMOTOR.PIN_MOTOR2_A_OUT.value, b=PINSMOTOR.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
+
 
         # ----------------  START ODOMETRY POSITION ----------------
         self.x = 0
@@ -103,7 +107,14 @@ class Robot:
         
         # ----------------  BALLS - TRAY ----------------
         self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
-        
+
+
+        # ----------------  ----------------
+        self.flap = Flap()
+        self.claw = Claw()
+  
+    def shutdown(self):
+        self.vision.close()
 
     def reset_position(self, x, y, th):
         self.x = x
@@ -718,7 +729,26 @@ class Robot:
         print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
         match self.state:
             
-            case State.START:
+            case State.START_LEFT: # start on the bottom left side of the quadrant (facing 3 o'clock)
+                match vision_x:
+                    case -1: # no ball detected in frame 
+                        self.start_rotating_clockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                        self.state = State.ROTATE_LEFT  # rotate on the spot
+                    case 2: #   # ball detected on left side of frame
+                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.state = State.ROTATE_LEFT_TARGET
+                    case 1: # ball in frame in centre 
+                        if vision_y == 1: # close 
+                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else: 
+                            self.start_forward(Speeds.MOVING_TO_TARGET.value)
+                            self.state = State.MOVE_TO_TARGET
+                    case 3: # ball in frame to right side 
+                        self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
+                        self.state = State.ROTATE_RIGHT_TARGET 
+
+            case State.START_RIGHT: # start on the bottom right side of the quadrant (facing 9 o'clock)
                 match vision_x:
                     case -1: # no ball detected in frame 
                         self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
@@ -736,7 +766,7 @@ class Robot:
                     case 3: # ball in frame to right side 
                         self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET
-
+            
             case State.ROTATE_EXPLORE: # spinning in place to find a target if it exists 
                 match vision_x:
                     case -1: # nothing detected

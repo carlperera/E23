@@ -66,7 +66,8 @@ if __name__ == "__main__":
     start_pos = StartPosition.LEFT
     robot = Robot(vision=vision, start_pos = start_pos)
 
-    
+    simulation_time_s = 10*60
+    time_start = time.time()
     while True: # for each frame from camera 
         try:
             # get latest frame
@@ -79,7 +80,12 @@ if __name__ == "__main__":
             if not ret:
                 print("error")
                 break
-                
+            
+            # ---------------------------- END SIMULATION ----------------------------
+            if time.time() - time_start > simulation_time_s: 
+                print("SIMULATION TIME REACHED: stopped the robot)")
+                robot.shutdown()
+                break
     
             robot.handle_state(frame)
             # cv2.imshow('Live feed',frame)

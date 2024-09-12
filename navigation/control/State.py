@@ -35,15 +35,6 @@ class State(Enum):
     
     ROTATE_EXPLORE_FULL_SECONDARY = 17    # rotate in secondary camera, if the ball has disappaered from view
     
-
-    """
-
-    """
-
-
-
-
-
     ROTATE_TO_FACE_START = 10 # move to face the start point 
     MOVE_TO_START = 11 # move to the start, once arrvied at start, swtich back to start state 
     ROTATE_EXPLORE2 = 12
