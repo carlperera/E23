@@ -901,7 +901,6 @@ class Robot:
                         self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
-
             case State.ROTATE_RIGHT_TARGET:
                 match vision_x:
                     case -1: # the ball has left the frame 
