@@ -9,21 +9,27 @@ class Flap:
         self.pin = pin 
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(SERVO_PINS.PIN_SERVO1_PWM.value, GPIO.OUT)
- 
-        pwm = GPIO.PWM(SERVO_PINS.PIN_SERVO1_PWM.value, 50)
-      
+        GPIO.setup(FLAP_PINS.PIN_FLAP_PWM.value, GPIO.OUT)
         
-
+        pwm = GPIO.PWM(FLAP_PINS.PIN_FLAP_PWM.value, 50)
 
     def start_open(self):
+        # do some stuff
+        return None 
 
     def stop_open(self):
-
+        # do some stuff
+        return None 
 
     def start_close(self):
+        # do some stuff
+        return None 
 
     def stop_close(self):
+        # do some stuff
+        return None 
+        
+
 
 
 
