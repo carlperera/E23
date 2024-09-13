@@ -80,7 +80,7 @@ if __name__ == "__main__":
             if not ret:
                 print("error")
                 break
-            
+            # cv2.imshow("Webcam", frame)
             # ---------------------------- END SIMULATION ----------------------------
             if time.time() - time_start > simulation_time_s: 
                 print("SIMULATION TIME REACHED: stopped the robot)")
