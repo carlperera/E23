@@ -12,7 +12,7 @@ import math
 from threading import Thread, Lock
 from functools import partial
 
-from State import State
+from State import State, StartPosition
 
 """
 whenever you stop the robot, you want to set steps for both motors to 0
@@ -59,8 +59,8 @@ FRAME_SKIP = 1
 
 if __name__ == "__main__":
     vision = Vision()
-    
-    robot = Robot(State.START, vision=vision)
+    start_pos = StartPosition.value
+    robot = Robot(State.START, vision=vision, start_pos=start_pos)
     x_init = 0.0
     y_init = 0.0
     th_init = 90

@@ -4,8 +4,7 @@ import math
 from State import State
 from Vision import Vision
 from State import StartPosition
-from Claw import Claw
-from Flap import Flap
+from Servo import Flap, Claw
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -274,12 +273,21 @@ class Robot:
 
         self.reset_encoders()
 
-
     def update_position(self, dist_travelled):
         angle_deg = self.th
 
+        # x is pos left to right 
+        start_pos = self.start_pos 
+        if self.start_pos == StartPosition.LEFT:
+            
+        # x is pos right to left 
+        else: 
 
+        
+
+        # calculate new position relative to (0.0, 0.0, 0.0) origin
         angle_rad = math.radians(self.th)
+
         if 0 <= angle_deg < 90:
             x_diff = math.cos(angle_rad)*dist_travelled
             y_diff = math.sin(angle_rad)*dist_travelled
@@ -402,7 +410,6 @@ class Robot:
         dist_output = (dist_input -Constants.FORWARD.value)/ Scaling.FORWARD.value
         return dist_output
 
-
     def move_forward(self, distance, speed=0.5):
         """
         Moves the robot forward by a specific distance at the given speed.
@@ -410,11 +417,8 @@ class Robot:
         dist_raw = self.dist_scale_down(distance)
         encoder_steps = self.dist_to_encoder_steps(dist_raw)
 
-       
         self.reset_encoders()
-
         # Kp_forward = 0.01  # Proportional gain for forward adjustment
-
         # Set motor direction for forward movement
         self.motor1_in1.on()
         self.motor1_in2.off()
