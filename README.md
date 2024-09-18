@@ -28,3 +28,7 @@ cv2.VideoCapture(INSERT_CAMERA_NUMBER_HERE)
 min_line_length = minimum pixel length for lines to be detected using Hough Transform
 
 # PLEASE NOTE CHANGING THE CAMERA FRAME RESOLUTION WILL REQUIRE RECALIBRATING ALL OF THE MINAREA AND MAXAREA AND RADIUS VALS.
+
+# Milestone 2
+## Delivery to collection box
+1. How to make 

@@ -4,7 +4,8 @@ import math
 from State import State
 from Vision import Vision
 from State import StartPosition
-from Servo import Flap, Claw
+from Claw import Claw
+from Flap import Flap
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -55,14 +56,9 @@ class RotateDirection(Enum):
     ANTICLOCKWISE = 0 
     CLOCKWISE = 1 
 
-class SERVO_PINS(Enum):
-    PIN_FLAP_PWM = 12
-    PIN_CLAW_PWM = 13
-
-
 class Robot:    
 
-    def __init__(self, vision: Vision, start_pos: StartPosition) -> None:
+    def __init__(self, vision: Vision, claw: Claw, start_pos: StartPosition) -> None:
 
         # ----------------  Specifications ----------------
         self.wheel_radius = WHEEL_RAD
@@ -96,10 +92,8 @@ class Robot:
         self.motor2_in2 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR2_IN2.value)
         self.motor2_encoder = gpiozero.RotaryEncoder(a=PINSMOTOR.PIN_MOTOR2_A_OUT.value, b=PINSMOTOR.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
 
+
         # ----------------  START ODOMETRY POSITION ----------------
-        self.x = 0
-        self.y = 0
-        self.th = 0
         self.reset_position(0.0,0.0,0.0)
         self.reset_encoders()
 
@@ -128,23 +122,36 @@ class Robot:
         self.motor1_encoder.steps = 0
         self.motor2_encoder.steps = 0
 
-    def get_orientation(self):
-        # return self.th
-
-        angle_raw = self.calc_rotated_angle() 
-        angle_rotated = self.angle_scale_up(angle_raw)
-        return angle_rotated
-    
-    def get_x(self):
-        return self.x
-
-    def get_y(self):
-        self.y
-
     def distance_per_step(self):
         wheel_rotatations_per_step = 1 / (CPR*GEAR_RATIO)
         return 2*math.pi*self.wheel_radius*wheel_rotatations_per_step
+    
 
+    def move_forward_alt(self, distance, speed=0.5):
+        """
+        Moves the robot forward by a specific distance at the given speed.
+        """
+        encoder_steps = self.dist_to_encoder_steps(distance)
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving forward
+        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+
+            time.sleep(0.01)  # Small delay for sensor feedback
+
+        # Stop motors
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+        print("done\n")
 
     def turn_off_all(self):
         self.motor1_pwm.off()
@@ -156,7 +163,7 @@ class Robot:
         self.motor1_in2.off()
 
     """MISSION METHODS"""
-    def start_clockwise(self, speed):
+    def start_rotating_clockwise(self, speed):
         self.reset_encoders()
         
         # Set motor directions for clockwise rotation
@@ -168,7 +175,7 @@ class Robot:
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
 
-    def start_anticlockwise(self, speed):
+    def start_rotating_anticlockwise(self, speed):
         self.reset_encoders()
         
         # Set motor directions for clockwise rotation
@@ -179,6 +186,8 @@ class Robot:
 
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
+        
+
 
     def update_orientation(self, angle_deg):
         new_angle = (self.th + angle_deg) % 360
@@ -191,7 +200,7 @@ class Robot:
         self.y = self.y + y_diff
     
 
-    def stop_clockwise(self):
+    def stop_rotating_clockwise(self):
         
         self.motor1_pwm.off()
         self.motor2_pwm.off()
@@ -204,13 +213,13 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
-        angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
+        angle_raw = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
         angle_deg = self.angle_scale_down(angle_raw)
         self.update_orientation(0-angle_deg)
 
         self.reset_encoders()
     
-    def stop_anticlockwise(self):
+    def stop_rotating_anticlockwise(self):
 
         self.motor1_pwm.off()
         self.motor2_pwm.off()
@@ -273,23 +282,18 @@ class Robot:
 
         self.reset_encoders()
 
-    def update_position(self, dist_travelled):
-        angle_deg = self.th 
-        angle_rad = math.radians(self.th)
 
-        # x is pos left to right 
-        start_pos = self.start_pos
-        
+    def update_position(self, dist_travelled):
+        angle_deg = self.th
+
+
+        angle_rad = math.radians(self.th)
         if 0 <= angle_deg < 90:
-            print("1")
             x_diff = math.cos(angle_rad)*dist_travelled
             y_diff = math.sin(angle_rad)*dist_travelled
 
-            if start_pos:  # right side 
-                self.update_x(0-x_diff)
-            else:          # left side 
-                self.update_x(x_diff)
-
+            # print("1")
+            self.update_x(0-x_diff)
             self.update_y(y_diff)   
 
         elif 90 <= angle_deg < 180:
@@ -298,11 +302,7 @@ class Robot:
             x_diff = math.cos(angle_rad)*dist_travelled
             y_diff = math.sin(math.radians(angle))*dist_travelled
 
-            if start_pos: # right side 
-                self.update_x(x_diff)
-            else:         # left side 
-                self.update_x(0-x_diff)
-
+            self.update_x(x_diff)
             self.update_y(y_diff)  
 
         elif 180 <= angle_deg < 270:
@@ -312,10 +312,7 @@ class Robot:
             x_diff = math.sin(math.radians(angle))*dist_travelled
             y_diff = math.cos(math.radians(angle))*dist_travelled 
 
-            if start_pos:
-                self.update_x(x_diff)
-            else:
-                self.update_x(0-x_diff)
+            self.update_x(x_diff)
             self.update_y(0-y_diff)  
 
         else:
@@ -324,14 +321,9 @@ class Robot:
             print("4")
             x_diff = math.cos(math.radians(angle))*dist_travelled
             y_diff = math.sin(math.radians(angle))*dist_travelled 
-            if start_pos:
-                self.update_x(0-x_diff)
-            else:
-                self.update_x(x_diff)
-            self.update_y(0-y_diff)  
 
-        print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
-        
+            self.update_x(0-x_diff)
+            self.update_y(0-y_diff)  
 
     def start_backward(self, speed):
         self.reset_encoders()
@@ -347,7 +339,7 @@ class Robot:
         
         """check odometry calcs"""
 
-    def stop_backwards(self): 
+    def stop_backwards(self):
         self.motor1_pwm.off()
         self.motor2_pwm.off()
 
@@ -418,6 +410,7 @@ class Robot:
         dist_output = (dist_input -Constants.FORWARD.value)/ Scaling.FORWARD.value
         return dist_output
 
+
     def move_forward(self, distance, speed=0.5):
         """
         Moves the robot forward by a specific distance at the given speed.
@@ -425,8 +418,11 @@ class Robot:
         dist_raw = self.dist_scale_down(distance)
         encoder_steps = self.dist_to_encoder_steps(dist_raw)
 
+       
         self.reset_encoders()
+
         # Kp_forward = 0.01  # Proportional gain for forward adjustment
+
         # Set motor direction for forward movement
         self.motor1_in1.on()
         self.motor1_in2.off()
@@ -583,9 +579,14 @@ class Robot:
         Args:
             :
         """
-        self.reset_encoders()
+        encoder_steps = self.calculate_encoder_steps_for_rotation(angle_degrees)
+
         
+        self.reset_encoders()
+
         # Determine direction based on the sign of the angle
+        
+        
         angle_raw = self.angle_scale_down(angle_degrees)
     
         if angle_degrees < 0:
@@ -695,6 +696,8 @@ class Robot:
         return angle_deg
 
     def rotate_to_face_centre(self):
+        
+
         return None 
 
     def get_dist_moved(self):
@@ -722,13 +725,14 @@ class Robot:
 
         print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
         match self.state:
+            
             case State.START_LEFT: # start on the bottom left side of the quadrant (facing 3 o'clock)
                 match vision_x:
                     case -1: # no ball detected in frame 
-                        self.start_clockwise(speed=Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATING_START_LEFT_EXPLORE  # rotate on the spot (anticlock)
+                        self.start_rotating_clockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                        self.state = State.ROTATE_LEFT  # rotate on the spot
                     case 2: #   # ball detected on left side of frame
-                        self.start_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case 1: # ball in frame in centre 
                         if vision_y == 1: # close 
@@ -738,16 +742,16 @@ class Robot:
                             self.start_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # ball in frame to right side 
-                        self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
+                        self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.START_RIGHT: # start on the bottom right side of the quadrant (facing 9 o'clock)
                 match vision_x:
                     case -1: # no ball detected in frame 
-                        self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATING_FACE_CENTRE_START_RIGHT  # rotate on the spot
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                        self.state = State.ROTATE_EXPLORE  # rotate on the spot
                     case 2: #   # ball detected on left side of frame
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case 1: # ball in frame in centre 
                         if vision_y == 1: # close 
@@ -757,61 +761,9 @@ class Robot:
                             self.start_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # ball in frame to right side 
-                        self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
+                        self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET
-
-            case State.ROTATING_START_LEFT_EXPLORE:
-                match vision_x:
-                    case -1: # no ball detected in frame 
-                        # check if rotated to 90 degrees 
-                        if self.get_orientation() >= 90:
-                            self.stop_clockwise()
-                            self.start_anticlockwise() # rotate to face the centre
-                            self.state = State.ROTATING_FACE_CENTRE_START_LEFT
-                        else:
-                            pass # keep rotating  
-                    case 2: #   # ball detected on left side of frame
-                        self.stop_clockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
-                        self.state = State.ROTATE_LEFT_TARGET
-                    case 1: # ball in frame in centre 
-                        self.stop_clockwise()
-                        if vision_y == 1: # close 
-                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else: 
-                            self.start_forward(Speeds.MOVING_TO_TARGET.value)
-                            self.state = State.MOVE_TO_TARGET
-                    case 3: # ball in frame to right side 
-                        self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATE_RIGHT_TARGET
-            case State.ROTATING_START_RIGHT_EXPLORE:
-                match vision_x:
-                    case -1: # no ball detected in frame 
-                        # check if rotated to 90 degrees 
-                        if self.get_orientation() >= 90:
-                            self.stop_anticlockwise()
-                            self.start_clockwise() # rotate to face the centre
-                            self.state = State.ROTATING_FACE_CENTRE_START_RIGHT
-                        else:
-                            pass # keep rotating  
-                    case 2: #   # ball detected on left side of frame
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
-                        self.state = State.ROTATE_LEFT_TARGET
-                    case 1: # ball in frame in centre 
-                        self.stop_anticlockwise()
-                        if vision_y == 1: # close 
-                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else: 
-                            self.start_forward(Speeds.MOVING_TO_TARGET.value)
-                            self.state = State.MOVE_TO_TARGET
-                    case 3: # ball in frame to right side 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATE_RIGHT_TARGET
-
+            
             case State.ROTATE_EXPLORE: # spinning in place to find a target if it exists 
                 match vision_x:
                     case -1: # nothing detected
@@ -822,19 +774,19 @@ class Robot:
                         print(f"angle_rotated = {angle_rotated}")
 
                         if angle_rotated >= 90:
-                            self.stop_anticlockwise()
-                            self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
+                            self.stop_rotating_anticlockwise()
+                            self.start_rotating_clockwise(Speeds.ROTATING_EXPLORE.value)
                             self.state = State.ROTATE_FACE_CENTRE
                         else:
                             # keep spinning 
                             pass
                     case 2: # left  
                         # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
-                        self.stop_anticlockwise() # stop rotating
+                        self.stop_rotating_anticlockwise() # stop rotating
 
                         if vision_y == 1: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
@@ -843,8 +795,8 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.ROTATE_EXPLORE2: # spinning in place to find a target if it exists 
@@ -858,18 +810,18 @@ class Robot:
                         print(f"angle_rotated = {angle_rotated}")
 
                         if angle_rotated >= 180:
-                            self.stop_anticlockwise()
+                            self.stop_rotating_anticlockwise()
                            
                             self.state= State.ROTATE_FACE_CENTRE
                             # self.rotate_to_face_centre()
 
                     case 2: # left 
                         # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
-                        self.stop_anticlockwise() # stop rotating
+                        self.stop_rotating_anticlockwise() # stop rotating
 
                         if vision_y == 1: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
@@ -878,8 +830,8 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
         
@@ -892,7 +844,7 @@ class Robot:
                         print(f"angle_rotated = {angle_rotated}")
 
                         if angle_rotated >= 45: # stop rotating 
-                            self.stop_anticlockwise()
+                            self.stop_rotating_anticlockwise()
                             print(f"angle_rotated = {angle_rotated}")
                             self.start_forward(Speeds.MOVING_TO_CENTRE.value)
                             self.state = State.MOVE_TO_CENTRE
@@ -901,11 +853,11 @@ class Robot:
                 
                     case 2: # left 
                         # keep spinning     
-                        self.stop_clockwise()
-                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_clockwise()
+                        self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
-                        self.stop_clockwise() # stop rotating
+                        self.stop_rotating_clockwise() # stop rotating
 
                         if vision_y == 1: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
@@ -914,8 +866,8 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
-                        self.stop_clockwise()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_clockwise()
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
                 
             case State.MOVE_TO_CENTRE:
@@ -925,13 +877,13 @@ class Robot:
 
                         if distance_travelled >= self.calibrated_centre_move: 
                             self.stop_forward()
-                            self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                            self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
                             self.state = State.ROTATE_EXPLORE2
                 
                     case 2: # left 
                         # keep spinning     
                         self.stop_forward()
-                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
                         self.stop_forward()
@@ -943,21 +895,21 @@ class Robot:
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
                         self.stop_forward()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.ROTATE_RIGHT_TARGET:
                 match vision_x:
                     case -1: # the ball has left the frame 
-                        self.stop_clockwise()
-                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_clockwise()
+                        self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_EXPLORE
                     case 2: 
-                        self.stop_clockwise()
-                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_clockwise()
+                        self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case 1: # ball in centre of frame so start moving forward
-                        self.stop_anticlockwise()
+                        self.stop_rotating_anticlockwise()
                         if vision_y == 1: # close 
                             self.move_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET
@@ -975,18 +927,18 @@ class Robot:
 
                         # TODO - fix this into two?
                         if angle_rotated >= 360:
-                            self.stop_anticlockwise()
-                            self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                            self.stop_rotating_anticlockwise()
+                            self.start_rotating_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
                             self.state = State.ROTATE_EXPLORE2
                             # self.rotate_to_face_centre()
 
                     case 2: # left 
                         # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
                     case 1:
-                        self.stop_anticlockwise() # stop rotating
+                        self.stop_rotating_anticlockwise() # stop rotating
 
                         if vision_y == 1: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
@@ -995,21 +947,21 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.ROTATE_LEFT_TARGET:
                 match vision_x:
                     case -1: # the ball has left the frame 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(Speeds.ROTATING_EXPLORE.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_anticlockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_EXPLORE
                     case 2:  # ball still to left, keep rotating anticlock
                         print("in rotate left, keep in rotate left")
                         pass 
                     case 1: # ball in centre of frame so start moving forward
-                        self.stop_anticlockwise()
+                        self.stop_rotating_anticlockwise()
                         if vision_y == 1: # close 
                             self.move_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET
@@ -1017,19 +969,19 @@ class Robot:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3:  # ball now to right of the frame, rotate to right  
-                        self.stop_anticlockwise()
-                        self.start_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.stop_rotating_anticlockwise()
+                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET
 
             case State.MOVE_TO_TARGET:
                 match vision_x:
                     case -1: # the ball has left the frame 
                         self.stop_forward()
-                        self.start_anticlockwise(speed = Speeds.ROTATING_EXPLORE.value)
+                        self.start_rotating_anticlockwise(speed = Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_EXPLORE
                     case 2:  # ball to the left so so readjust 
                         self.stop_forward()
-                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case 1: # ball in centre of frame
                         if vision_y == 1: # close 
@@ -1040,7 +992,7 @@ class Robot:
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                     case 3:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
-                        self.start_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                        self.start_rotating_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET
 
             case State.CLOSE_TO_TARGET:
@@ -1066,7 +1018,7 @@ class Robot:
                 
                 if distance_moved >= self.calibrated_retreat_dist:
                     self.stop_backwards()
-                    self.start_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
+                    self.start_rotating_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
                     self.angle_to_rotate_to 
                     self.state = State.ROTATE_TO_FACE_START
 
@@ -1075,7 +1027,7 @@ class Robot:
                 
                 if distance_moved >= self.calibrated_retreat_dist:
                     self.stop_backwards()
-                    self.start_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
+                    self.start_rotating_anticlockwise(speed=Speeds.RETURN_ROTATE.value)
                     self.angle_to_rotate_to 
                     self.state = State.ROTATE_TO_FACE_START
                 
@@ -1096,12 +1048,12 @@ class Robot:
 
                 ang_diff = (theta_deg - th_current) % 360
                 if ang_diff > 180: # turn anticlockwise 
-                    self.start_anticlockwise(Speeds.RETURN_ROTATE.value)
+                    self.start_rotating_anticlockwise(Speeds.RETURN_ROTATE.value)
                     self.angle_to_rotate_to = 360 - ang_diff
                     self.rotate_direction = RotateDirection.ANTICLOCKWISE
 
                 else: # turn clockwise 
-                    self.start_clockwise(Speeds.RETURN_ROTATE.value)
+                    self.start_rotating_clockwise(Speeds.RETURN_ROTATE.value)
                     self.angle_to_rotate_to = ang_diff
                     self.rotate_direction = RotateDirection.CLOCKWISE
                 self.state = State.ROTATING_TO_FACE_START
@@ -1111,9 +1063,9 @@ class Robot:
 
                 if angle_rotated >= self.angle_to_rotate_to:
                     if self.rotate_direction is RotateDirection.ANTICLOCKWISE:
-                        self.stop_anticlockwise()
+                        self.stop_rotating_anticlockwise()
                     else:
-                        self.stop_anticlockwise()
+                        self.stop_rotating_anticlockwise()
                     
                     self.start_forward(speed = Speeds.MOVING_TO_START)
                     self.state = State.MOVE_TO_START
@@ -1123,11 +1075,6 @@ class Robot:
                 # check if you've moved to start position (or close to)
                 x_current = self.x
                 y_current = self.y
-
-
-
-
-
 
                 if x_current <= 0.2 and y_current <= 0.2: 
                     self.stop_forward()
