@@ -31,4 +31,12 @@ min_line_length = minimum pixel length for lines to be detected using Hough Tran
 
 # Milestone 2
 ## Delivery to collection box
-1. How to make 
+1. How to find the collection box?
+    1.1 vision to detect brown? 
+    1.2 hard-coded with odometry?
+2. How to navigate to the collection box?
+    1.1 just go towards it? Do we want it to position the robot not on the edges of the collection box 
+3. how to avoid going over our quadrant borders? 
+    3.1 odometry would ensure that we never step outside of the borders, but;
+    3.2 if we detect a ball on another quadrant, there's no way to tell the robot to not navigate towards it 
+        3.2.1 how to make robot know that a detected ball is also within the quadrant bounds?

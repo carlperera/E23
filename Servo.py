@@ -13,7 +13,6 @@ class Servo:
 
     def __init__(self, pin):
         self.pin = pin
-        GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.pin, GPIO.OUT)
         self.pwm = GPIO.PWM(self.pin, 50)
         self.pwm.start(0)
@@ -35,7 +34,7 @@ class Servo:
 
 class Flap(Servo):
     def __init__(self):
-        super.__init__(SERVO_PINS.PIN_FLAP_PWM.value)
+        super().__init__(SERVO_PINS.PIN_FLAP_PWM.value)
 
     def open(self):
         self.setAngle(20)
@@ -48,8 +47,8 @@ class Flap(Servo):
 
     
 class Claw(Servo):
-    def __init__(self, pin):
-        super.__init__(SERVO_PINS.PIN_CLAW_PWM.value)
+    def __init__(self):
+        super().__init__(SERVO_PINS.PIN_CLAW_PWM.value)
 
     def open(self):
         self.setAngle(-15)

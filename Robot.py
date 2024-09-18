@@ -5,6 +5,8 @@ from State import State
 from Vision import Vision
 from State import StartPosition
 from Servo import Flap, Claw
+import RPi.GPIO as GPIO
+import math
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -60,9 +62,13 @@ class SERVO_PINS(Enum):
     PIN_CLAW_PWM = 13
 
 
+
 class Robot:    
 
-    def __init__(self, vision: Vision, start_pos: StartPosition) -> None:
+    def __init__(self, vision: Vision | None, start_pos: StartPosition) -> None:
+
+        # ------- set mode -------
+        GPIO.setmode(GPIO.BCM)
 
         # ----------------  Specifications ----------------
         self.wheel_radius = WHEEL_RAD
@@ -75,15 +81,7 @@ class Robot:
         self.left_motor_scale = 1.0
         self.motor1_multiplier = 1
         self.motor2_multiplier = 1 
-        
-        # ----------------  Start Position ----------------
-        self.start_pos = start_pos
-        if start_pos is StartPosition.LEFT:
-            self.state = State.START_LEFT
-        else:
-            self.state = State.START_RIGHT
-
-        self.close_to_target_calibration = 0.35
+    
 
         # ----------------  ENCODER SETUP ----------------
         self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINSMOTOR.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
@@ -97,12 +95,17 @@ class Robot:
         self.motor2_encoder = gpiozero.RotaryEncoder(a=PINSMOTOR.PIN_MOTOR2_A_OUT.value, b=PINSMOTOR.PIN_MOTOR2_B_OUT.value,max_steps=100000) 
 
         # ----------------  START ODOMETRY POSITION ----------------
-        self.x = 0
-        self.y = 0
-        self.th = 0
-        self.reset_position(0.0,0.0,0.0)
+         # ----------------  Start Position ----------------
+        self.start_pos = start_pos
+        if start_pos is StartPosition.LEFT:
+            self.state = State.START_LEFT
+        else:
+            self.state = State.START_RIGHT
+        
+        self.reset_position(0.0,0.0,90)
         self.reset_encoders()
 
+        self.close_to_target_calibration = 0.35
         # ----------------  VISION ----------------
         self.vision = vision
 
@@ -111,10 +114,9 @@ class Robot:
         # ----------------  BALLS - TRAY ----------------
         self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
 
-
         # ----------------  ----------------
-        self.flap = Flap()
-        self.claw = Claw()
+        # self.flap = Flap()
+        # self.claw = Claw()
   
     def shutdown(self):
         self.vision.close()
@@ -183,6 +185,7 @@ class Robot:
     def update_orientation(self, angle_deg):
         new_angle = (self.th + angle_deg) % 360
         self.th = new_angle
+        print(f"new angle = {math.round(self.th,2)}")
 
     def update_x(self, x_diff):
         self.x = self.x + x_diff
@@ -206,6 +209,7 @@ class Robot:
 
         angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
         angle_deg = self.angle_scale_down(angle_raw)
+        print(f"angle_diff = {angle_deg}")
         self.update_orientation(0-angle_deg)
 
         self.reset_encoders()
@@ -248,6 +252,27 @@ class Robot:
             dist_actual = (dist_raw - Constants.FORWARD.value)/Scaling.FORWARD.value
         print(f"dist scaled dowwn = {dist_actual}")
         return dist_actual 
+
+    """ Converting between encoder <-> actual distance
+    -> the encoder thinks it has moved more than it actually has
+    """
+    def convert_encoder_dist_to_actual(dist_encoder: float):
+        """
+        Converts the distance the encoder thinks it has moved to 
+        the distance that has been actually moved 
+        """
+        dist_actual = dist_encoder * Scaling.FORWARD.value + Constants.FORWARD.value
+        return dist_actual
+
+    def convert_actual_to_encoder_dist(dist_actual):
+        """
+        Converts the distance actually needed to be moved to the distance the encoder thinks it needs to move 
+        """
+        dist_encoder = 0 
+        
+        if dist_actual > Constants.FORWARD.value:
+            dist_encoder = (dist_actual - Constants.FORWARD.value)/Scaling.FORWARD.value
+        return dist_encoder 
 
     def dist_scale_up(self, dist_actual):
         dist_raw = dist_actual * Scaling.FORWARD.value + Constants.FORWARD.value
@@ -330,7 +355,7 @@ class Robot:
                 self.update_x(x_diff)
             self.update_y(0-y_diff)  
 
-        print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
+        print(f"new position ->(x, y, th) = ({self.x},  {self.y},  {self.th})")
         
 
     def start_backward(self, speed):
@@ -409,14 +434,70 @@ class Robot:
         else:
             self.move_backward(distance, speed)
 
+    def move_test(self, distance, speed):
+        if distance > 0: 
+            self.forward_test(distance, speed)
+        else:
+            self.backward_test(distance, speed)
 
-    def dist_input_output_scaling(self, dist_input):
-        dist_output = dist_input*Scaling.FORWARD.value + Constants.FORWARD.value
-        return dist_output
-    
-    def dist_output_input_scaling(self, dist_input):
-        dist_output = (dist_input -Constants.FORWARD.value)/ Scaling.FORWARD.value
-        return dist_output
+    def backward_test(self, distance, speed):
+        encoder_steps = self.dist_to_encoder_steps(distance)
+        self.reset_encoders()
+        # Set motor direction for backward movement
+        self.motor1_in1.off()
+        self.motor1_in2.on()
+        self.motor2_in1.off()
+        self.motor2_in2.on()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving backward
+        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+            time.sleep(0.01)  # Small delay for sensor feedback
+
+        # Stop motors
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        self.update_position(dist_travelled)
+        self.reset_encoders()
+
+
+    def forward_test(self, distance, speed):
+        encoder_steps = self.dist_to_encoder_steps(distance)
+
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving forward
+        while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
+            time.sleep(0.01)
+
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        self.update_position(dist_travelled)
+        self.reset_encoders()
+
 
     def move_forward(self, distance, speed=0.5):
         """
@@ -468,10 +549,6 @@ class Robot:
         dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
 
         """check odometry calcs"""
-
-        # self.update_x(x_diff)
-        # self.update_y(y_diff)
-
         self.update_position(dist_travelled)
 
         self.reset_encoders()
@@ -701,7 +778,7 @@ class Robot:
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
         steps = max(motor1_steps, motor2_steps)
-        print(f"STEPSSSSS: {steps}")
+        # print(f"STEPSSSSS: {steps}")
         time.sleep(0.1)
 
         dist_raw = self.encoder_steps_to_dist(steps)
