@@ -22,25 +22,46 @@ class State(Enum):
     ROTATE_LEFT_TARGET = 8 # locked onto target, just rotating to centire it in frame 
     ROTATE_RIGHT_TARGET = 9  # locked onto target just rotating clockwise 
     MOVE_TO_TARGET = 10 # moving to target but not close enough
-    CLOSE_TO_TARGET = 11  # close to target, switch to secondary camera?
+    CLOSE_TO_TARGET = 11  # close to target, switch to secondary camera? (<30% ??)
 
     # secondary camera
     ROTATE_LEFT_SECONDARY = 12
     ROTATE_RIGHT_SECONDARY = 13
     MOVE_TO_TARGET_SECONDARY = 14
     
-    # Collection Sequence
-    PICKUP_START = 15   # actuate the servo, 
-    PICKUP_IN_PROGRESS = 16  # Servo still lifting the ball up, start rotating to explore too at the same time (lock onto a different ball)
-    
-    ROTATE_EXPLORE_FULL_SECONDARY = 17    # rotate in secondary camera, if the ball has disappaered from view
-    
-    ROTATE_TO_FACE_START = 10 # move to face the start point 
-    MOVE_TO_START = 11 # move to the start, once arrvied at start, swtich back to start state 
-    ROTATE_EXPLORE2 = 12
-    ROTATE_FACE_CENTRE = 13
+    # Pickup Sequence
+    PICKUP_BALL = 15   # actuate the servo, stops the state machine to actuate claw, then lower it down
 
-    ROTATING_TO_FACE_START = 15
+    # PICKUP_IN_PROGRESS = 16  # Servo still lifting the ball up, start rotating to explore too at the same time (lock onto a different ball)
+    # if the ball has disappaered from view, switch back to primary
+    ROTATE_EXPLORE_FULL_SECONDARY = 17    # rotate 360 in secondary camera, if the ball has disappaered from view
+  
+    # Move to centre to rotate in place (explore)
+    ROTATE_FACE_CENTRE = 18
+    ROTATE_EXPLORE = 19 # rotate in place 360 to find a ball if exists 
+
+    # Delivery
+    BOX_DETECT_START = 20 # rotate in place 360 to see the box (at any (x,y) pos)
+        # otherwise if no box detected in current position, go to centre -> ROTATE_FACE_CENTRE
+
+    MOVE_TO_BOX = 21
+    CLOSE_TO_BOX  = 22
+    TURN_BACK_TO_BOX = 23
+    REVERSE_TO_BOX =  24
+
+    FLAP_SEQUENCE = 25 
+
+
+
+
+
+    
+
+
+
+
+
+
 
 class StartPosition(Enum):
     """

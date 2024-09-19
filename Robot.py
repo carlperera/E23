@@ -6,7 +6,7 @@ from Vision import Vision
 from State import StartPosition
 from Servo import Flap, Claw
 import RPi.GPIO as GPIO
-import math
+
 
 WHEEL_SEP = 227/1000
 WHEEL_RAD = 61/2/1000
@@ -82,7 +82,6 @@ class Robot:
         self.motor1_multiplier = 1
         self.motor2_multiplier = 1 
     
-
         # ----------------  ENCODER SETUP ----------------
         self.motor1_pwm = gpiozero.PWMOutputDevice(pin=PINSMOTOR.PIN_MOTOR1_PWM_ENABLE.value,active_high=True,initial_value=0,frequency=100)
         self.motor1_in1 = gpiozero.OutputDevice(pin=PINSMOTOR.PIN_MOTOR1_IN1.value)
@@ -115,8 +114,9 @@ class Robot:
         self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
 
         # ----------------  ----------------
-        # self.flap = Flap()
-        # self.claw = Claw()
+        self.flap = Flap()
+        self.claw = Claw()
+        
   
     def shutdown(self):
         self.vision.close()
@@ -137,6 +137,13 @@ class Robot:
         angle_rotated = self.angle_scale_up(angle_raw)
         return angle_rotated
     
+    def check_rotated_90_at_start(self):
+        start_pos = self.start_pos 
+        if start_pos: #right 
+            return self.get_orientation() >= 180
+        else:
+            return self.get_orientation() < 0
+
     def get_x(self):
         return self.x
 
@@ -185,7 +192,7 @@ class Robot:
     def update_orientation(self, angle_deg):
         new_angle = (self.th + angle_deg) % 360
         self.th = new_angle
-        print(f"new angle = {math.round(self.th,2)}")
+        # print(f"new angle = {math.round(self.th,2)}")
 
     def update_x(self, x_diff):
         self.x = self.x + x_diff
@@ -256,7 +263,7 @@ class Robot:
     """ Converting between encoder <-> actual distance
     -> the encoder thinks it has moved more than it actually has
     """
-    def convert_encoder_dist_to_actual(dist_encoder: float):
+    def convert_encoder_dist_to_actual(self, dist_encoder):
         """
         Converts the distance the encoder thinks it has moved to 
         the distance that has been actually moved 
@@ -264,7 +271,7 @@ class Robot:
         dist_actual = dist_encoder * Scaling.FORWARD.value + Constants.FORWARD.value
         return dist_actual
 
-    def convert_actual_to_encoder_dist(dist_actual):
+    def convert_actual_to_encoder_dist(self, dist_actual):
         """
         Converts the distance actually needed to be moved to the distance the encoder thinks it needs to move 
         """
@@ -470,7 +477,8 @@ class Robot:
 
 
     def forward_test(self, distance, speed):
-        encoder_steps = self.dist_to_encoder_steps(distance)
+        dist_encoders = self.convert_actual_to_encoder_dist(distance)
+        encoder_steps = self.dist_to_encoder_steps(dist_encoders)
 
         self.reset_encoders()
 
@@ -793,7 +801,7 @@ class Robot:
         # track ball and line detect  
         vision_x, vision_y = self.vision.track_ball(frame, camNum)
 
-        print(f"vision_x = {vision_x}  --- vision_y = {vision_y}")
+        print(f"vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
 
         old_state = self.state
 
@@ -841,6 +849,8 @@ class Robot:
                 match vision_x:
                     case -1: # no ball detected in frame 
                         # check if rotated to 90 degrees 
+                        if self.check_rotated_90_at_start():
+                            
                         if self.get_orientation() >= 90:
                             self.stop_clockwise()
                             self.start_anticlockwise() # rotate to face the centre
@@ -862,6 +872,7 @@ class Robot:
                     case 3: # ball in frame to right side 
                         self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET
+
             case State.ROTATING_START_RIGHT_EXPLORE:
                 match vision_x:
                     case -1: # no ball detected in frame 
@@ -889,41 +900,7 @@ class Robot:
                         self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET
 
-            case State.ROTATE_EXPLORE: # spinning in place to find a target if it exists 
-                match vision_x:
-                    case -1: # nothing detected
-                        # check if already spun 360 
-                        angle_raw = self.calc_rotated_angle() 
-                        angle_rotated = self.angle_scale_up(angle_raw)
-
-                        print(f"angle_rotated = {angle_rotated}")
-
-                        if angle_rotated >= 90:
-                            self.stop_anticlockwise()
-                            self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
-                            self.state = State.ROTATE_FACE_CENTRE
-                        else:
-                            # keep spinning 
-                            pass
-                    case 2: # left  
-                        # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
-                        self.state = State.ROTATE_LEFT_TARGET 
-                    case 1:
-                        self.stop_anticlockwise() # stop rotating
-
-                        if vision_y == 1: # close 
-                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else:
-                            self.move_forward(Speeds.MOVING_TO_TARGET.value)
-                            self.state = State.MOVE_TO_TARGET
-                    case 3: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
-                        self.state = State.ROTATE_RIGHT_TARGET 
-
+    
             case State.ROTATE_EXPLORE2: # spinning in place to find a target if it exists 
                 match vision_x:
                     case -1: # nothing detected
@@ -1003,7 +980,7 @@ class Robot:
                         if distance_travelled >= self.calibrated_centre_move: 
                             self.stop_forward()
                             self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
-                            self.state = State.ROTATE_EXPLORE2
+                            self.state = State.ROTATING_START_RIGHT_EXPLORE
                 
                     case 2: # left 
                         # keep spinning     
@@ -1028,7 +1005,7 @@ class Robot:
                     case -1: # the ball has left the frame 
                         self.stop_clockwise()
                         self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
-                        self.state = State.ROTATE_EXPLORE
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
                     case 2: 
                         self.stop_clockwise()
                         self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
@@ -1081,7 +1058,7 @@ class Robot:
                     case -1: # the ball has left the frame 
                         self.stop_anticlockwise()
                         self.start_anticlockwise(Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATE_EXPLORE
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
                     case 2:  # ball still to left, keep rotating anticlock
                         print("in rotate left, keep in rotate left")
                         pass 
@@ -1103,7 +1080,7 @@ class Robot:
                     case -1: # the ball has left the frame 
                         self.stop_forward()
                         self.start_anticlockwise(speed = Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATE_EXPLORE
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
                     case 2:  # ball to the left so so readjust 
                         self.stop_forward()
                         self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
@@ -1130,13 +1107,22 @@ class Robot:
                 dist_to_move = 55/100 
                 print(f"dist_to_move = {dist_to_move}")
 
-                if distance_moved >= dist_to_move:  # blind-spot distance +  bottom frame dist=  0.3 + 0.15
+                if vision_x == 4 and vision_y == 4:
                     self.stop_forward()
-                    print("touched ball!")
+                    print("GRABBED ball!")
                     self.start_backward(speed=Speeds.RETREAT_BACK.value)
                     self.state = State.START_RETURN
                 else:
                     pass
+
+
+                # if distance_moved >= dist_to_move:  # blind-spot distance +  bottom frame dist=  0.3 + 0.15
+                #     self.stop_forward()
+                #     print("touched ball!")
+                #     self.start_backward(speed=Speeds.RETREAT_BACK.value)
+                #     self.state = State.START_RETURN
+                # else:
+                #     pass
                 
             case State.START_RETURN:
                 distance_moved = self.get_dist_moved()

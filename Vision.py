@@ -1,5 +1,19 @@
 import cv2
 import numpy as np 
+from enum import Enum
+
+class VISION_X(Enum):
+    LINE_DETECTED = -1
+    BALL_CENTRE = 1
+    BALL_LEFT = 2
+    BALL_RIGHT = 3
+    BALL_IN_GRABBER = 4
+
+class VISION_Y(Enum):
+    LINE_DETECTED = - 1
+    NOT_CLOSE = 0
+    CLOSE = 1
+    BALL_IN_GRABBER = 2
 
 class Vision:
     class Tennis_ball:
@@ -56,7 +70,7 @@ class Vision:
 
         frame_to_thresh = cv2.cvtColor(blurred_image, cv2.COLOR_BGR2HSV) # HSV goes 0 to 179 for RYGBP for every 30, S and V are 0-255
         #v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [40, 70, 70, 80, 200, 200]
-        v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [25, 45, 70, 80, 255, 255]
+        v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [25, 50, 70, 80, 255, 255]
         thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max)) # The cv2.inRange function checks each pixel in the frame_to_thresh image to see if its HSV values fall within the specified range. If a pixel's HSV values are within the range, the corresponding pixel in the thresh image is set to 255 (white). Otherwise, it is set to 0 (black).
 
         kernel = np.ones((5, 5), np.uint8)
@@ -72,7 +86,7 @@ class Vision:
             maxarea = 170000.0
             minare = 800.0
         elif camNum == 2: # For the secondary camera
-            maxarea = 17000
+            maxarea = 307200
             minare = 300
 
         ball_number = 0
@@ -86,6 +100,11 @@ class Vision:
                 if maxarea >= cv2.contourArea(cnts) >= minare:
                     confirm = True
                     ball_number += 1
+                    
+                    if camNum == 2 and (pixels > (0.8*self.capWidth_secondary *self.capHeight_secondary)):
+                        print("BALL CONFIRMED IN THE GRABBER")
+                        vision_y = VISION_Y.BALL_IN_GRABBER.value
+                        
 
             except Exception as e:
                 print(e)
@@ -168,6 +187,8 @@ class Vision:
                 print("line detected!")
                 vision_x = -1
                 vision_y = -1
+
+
 
         return (vision_x, vision_y)
 
@@ -269,6 +290,7 @@ class Vision:
                     #         print("ball out of bounds")
                     #         output = True
                     #         break
+        
 
         return output      
 

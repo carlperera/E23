@@ -1,23 +1,25 @@
-from Servo import Servo
+from Servo import Flap, Claw
 from time import sleep
+import RPi.GPIO as GPIO
 
 if __name__ == "__main__":
-    servo = Servo(pin=12)
+    GPIO.setmode(GPIO.BCM)
+    claw = Claw()
  
 
     try:
 
         # simulate flap release USE PIN 12 FOR FLAP
-        servo.rotate_from_90()
-        sleep(5)
-        servo.rotate_to_90()
+        
+        claw.open()
+        claw.close()
 
         # #simulate claw USE PIN 13 FOR CLAW
         # servo.rotate_to_180()
         # servo.rotate_from_180()
 
     except KeyboardInterrupt:
-        servo.stop()
+        claw.stop()
     # finally:
     #     # servo.stop()  # Ensure cleanup happens
 
