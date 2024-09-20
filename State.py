@@ -16,21 +16,22 @@ class State(Enum):
     MOVE_TO_CENTRE = 6 
 
     # rotating in place to "explore" (go full 360)
-    ROTATE_EXPLORE_FULL_PRIMARY = 7
+    ROTATE_EXPLORE_FULL_PRIMARY_PART_1 = 7
+    ROTATE_EXPLORE_FULL_PRIMARY_PART_2 = 8
 
     # locked onto target 
-    ROTATE_LEFT_TARGET = 8 # locked onto target, just rotating to centire it in frame 
-    ROTATE_RIGHT_TARGET = 9  # locked onto target just rotating clockwise 
-    MOVE_TO_TARGET = 10 # moving to target but not close enough
-    CLOSE_TO_TARGET = 11  # close to target, switch to secondary camera? (<30% ??)
+    ROTATE_LEFT_TARGET = 9 # locked onto target, just rotating to centire it in frame 
+    ROTATE_RIGHT_TARGET = 10  # locked onto target just rotating clockwise 
+    MOVE_TO_TARGET = 11 # moving to target but not close enough
+    CLOSE_TO_TARGET = 12  # close to target, switch to secondary camera? (<30% ??)
 
     # secondary camera
-    ROTATE_LEFT_SECONDARY = 12
-    ROTATE_RIGHT_SECONDARY = 13
-    MOVE_TO_TARGET_SECONDARY = 14
+    ROTATE_LEFT_SECONDARY = 13
+    ROTATE_RIGHT_SECONDARY = 14
+    MOVE_TO_TARGET_SECONDARY = 15
     
     # Pickup Sequence
-    PICKUP_BALL = 15   # actuate the servo, stops the state machine to actuate claw, then lower it down
+    PICKUP_BALL = 16   # actuate the servo, stops the state machine to actuate claw, then lower it down
 
     # PICKUP_IN_PROGRESS = 16  # Servo still lifting the ball up, start rotating to explore too at the same time (lock onto a different ball)
     # if the ball has disappaered from view, switch back to primary

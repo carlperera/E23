@@ -54,8 +54,10 @@ class PINSMOTOR(Enum):
     PIN_MOTOR2_B_OUT =     15
 
 class RotateDirection(Enum):
+    NOT_ROTATING = -1
     ANTICLOCKWISE = 0 
     CLOCKWISE = 1 
+
 
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12
@@ -110,6 +112,7 @@ class Robot:
 
         self.angle_to_rotate_to = None
         
+        
         # ----------------  BALLS - TRAY ----------------
         self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
 
@@ -130,12 +133,33 @@ class Robot:
         self.motor1_encoder.steps = 0
         self.motor2_encoder.steps = 0
 
-    def get_orientation(self):
-        # return self.th
+    def update_and_get_orientation(self):
+        angle_rotated = self.calc_rotated_angle()
 
-        angle_raw = self.calc_rotated_angle() 
-        angle_rotated = self.angle_scale_up(angle_raw)
-        return angle_rotated
+        # reset the encoders 
+        self.reset_encoders()
+
+        rotating_direction = self.get_rotating_direction()
+
+        
+        match(rotating_direction):
+            case RotateDirection.ANTICLOCKWISE:
+                self.update_orientation(angle_rotated)
+            case RotateDirection.CLOCKWISE:
+                self.update_orientation(0-angle_rotated)
+        return self.get_orientation
+
+    def get_rotating_direction(self):
+        # check if rotating clockwise
+        if self.motor1_in1.value == 1 and self.motor1_in2.value == 0 and self.motor2_in1 == 0 and self.motor2_in2 == 1:
+            return RotateDirection.CLOCKWISE
+
+        elif self.motor1_in1.value == 0 and self.motor1_in2.value == 1 and self.motor2_in1 == 1 and self.motor2_in2 == 0:
+            return RotateDirection.ANTICLOCKWISE
+        return None
+    
+    def get_orientation(self):
+        return self.th
     
     def check_rotated_90_at_start(self):
         start_pos = self.start_pos 
@@ -190,16 +214,13 @@ class Robot:
         self.motor2_pwm.value = speed
 
     def update_orientation(self, angle_deg):
-        new_angle = (self.th + angle_deg) % 360
-        self.th = new_angle
-        # print(f"new angle = {math.round(self.th,2)}")
+        self.th = (self.th + angle_deg) % 360
 
     def update_x(self, x_diff):
         self.x = self.x + x_diff
     
     def update_y(self, y_diff):
         self.y = self.y + y_diff
-    
 
     def stop_clockwise(self):
         
@@ -522,6 +543,8 @@ class Robot:
         self.motor2_in1.on()
         self.motor2_in2.off()
 
+       
+
         self.motor1_pwm.value = speed*self.left_motor_scale
         self.motor2_pwm.value = speed
 
@@ -768,13 +791,13 @@ class Robot:
         self.update_orientation(angle_deg)
         self.reset_encoders()
        
-    
+
     def calc_rotated_angle(self):
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
         print(f"motor1 steps = {motor1_steps} --- motor2_steps = {motor2_steps}")
-        angle_deg= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
+        angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
         angle_rotated = self.angle_scale_up(angle_deg)
 
         return angle_rotated
@@ -825,7 +848,7 @@ class Robot:
 
         else: # turn clockwise 
             self.start_clockwise(Speeds.RETURN_ROTATE.value)
-            sangle_to_rotate_to = angle_diff
+            angle_to_rotate_to = angle_diff
             rotate_direction = RotateDirection.CLOCKWISE
         return (angle_to_rotate_to, rotate_direction)
 
@@ -842,6 +865,7 @@ class Robot:
         old_state = self.state
 
         print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
+
         match self.state:
             case State.START_LEFT: # start on the bottom left side of the quadrant (facing 3 o'clock)
                 match vision_x:
@@ -934,7 +958,8 @@ class Robot:
                         self.state = State.ROTATE_RIGHT_TARGET
 
             case State.ROTATING_FACE_CENTRE_START_LEFT:
-                if self.get_orientation() <= 45: 
+
+                if self.update_and_get_orientation() <= 45: 
                     self.stop_anticlockwise()
                     self.start_forward(speed=Speeds.MOVING_TO_CENTRE.value)
                     self.state = State.MOVE_TO_CENTRE
@@ -942,14 +967,48 @@ class Robot:
                     pass # keep rotating 
 
             case State.ROTATING_FACE_CENTRE_START_RIGHT:
-                if self.get_orientation() >= 135:
+                if self.update_and_get_orientation() >= 135:
                     self.stop_clockwise()
                     self.start_forward(speed=Speeds.MOVING_TO_CENTRE.value)
                     self.state = State.MOVE_TO_CENTRE
                 else:
                     pass # keep rotating
-        
-            case State.ROTATE_EXPLORE_FULL_PRIMARY: # spinning in place to find a target if it exists 
+            
+            # if this full 360 is not accurate, then break this into two states, both make it rotate 180 degrees (but do this twice)
+            case State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1:
+                match vision_x:
+                        case -1: # nothing detected
+                            # check if already spun 360 
+                            angle_rotated = self.calc_rotated_angle() 
+                        
+                            if self.check_rotated_by_angle(180):
+                                self.stop_anticlockwise()
+
+                                # second part of the full 360
+                                self.start_anticlockwise()
+                                self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_2
+
+                        case 2: # left 
+                            # keep spinning 
+                            self.stop_anticlockwise()
+
+                            # start rotating again
+                            self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
+                            self.state = State.ROTATE_LEFT_TARGET 
+                        case 1:
+                            self.stop_anticlockwise() # stop rotating
+
+                            if vision_y == 1: # close 
+                                self.start_forward(Speeds.CLOSE_TO_TARGET.value)
+                                self.state = State.CLOSE_TO_TARGET
+                            else:
+                                self.move_forward(Speeds.MOVING_TO_TARGET.value)
+                                self.state = State.MOVE_TO_TARGET
+                        case 3: # to the right 
+                            self.stop_anticlockwise()
+                            self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                            self.state = State.ROTATE_RIGHT_TARGET 
+            case State.ROTATE_EXPLORE_FULL_PRIMARY_PART_2:
                 match vision_x:
                     case -1: # nothing detected
                         # check if already spun 360 
@@ -958,12 +1017,18 @@ class Robot:
                         if self.check_rotated_by_angle(180):
                             self.stop_anticlockwise()
 
+                            # since no ball spotted, rotate to face the centre (maximise vision)
                             angle, dir = self.determine__face_centre_angle_dir()
 
+                            self.angle_to_rotate_to = (self.get_orientation() + angle) % 360
+
                             if dir == RotateDirection.ANTICLOCKWISE:
-                                self.state= State.ROTATE_FACE_CENTRE_ANTICLOCKWISE
+                                self.state= State.ROTATE_FACE_CENTRE_ANTICLOCK_BALL
+                                self.start_anticlockwise(speed = Speeds.ROTATE_TO_CENTRE.value)
+
                             else:
                                 self.state = State.ROTATE_FACE_CENTRE_CLOCKWISE
+                                self.start_clockwise(speed = Speeds.ROTATE_TO_CENTRE.value)
 
                     case 2: # left 
                         # keep spinning 
@@ -985,6 +1050,7 @@ class Robot:
                         self.state = State.ROTATE_RIGHT_TARGET 
         
             case State.ROTATE_FACE_CENTRE_CLOCKWISE_BALL:
+
                 
             case State.ROTATE_FACE_CENTRE_ANTICLOCK_BALL:
                 
