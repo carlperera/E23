@@ -37,19 +37,20 @@ class State(Enum):
     ROTATE_EXPLORE_FULL_SECONDARY = 17    # rotate 360 in secondary camera, if the ball has disappaered from view
   
     # Move to centre to rotate in place (explore)
-    ROTATE_FACE_CENTRE = 18
+    ROTATE_FACE_CENTRE_BALL = 18 # face the centre to move to it, if you want to spot balls or the collection box (a safe zone)
     ROTATE_EXPLORE = 19 # rotate in place 360 to find a ball if exists 
 
     # Delivery
     BOX_DETECT_START = 20 # rotate in place 360 to see the box (at any (x,y) pos)
         # otherwise if no box detected in current position, go to centre -> ROTATE_FACE_CENTRE
+    ROTATE_FACE_CENTRE_BOX = 21
 
-    MOVE_TO_BOX = 21
-    CLOSE_TO_BOX  = 22
-    TURN_BACK_TO_BOX = 23
-    REVERSE_TO_BOX =  24
+    MOVE_TO_BOX = 22
+    CLOSE_TO_BOX  = 23
+    TURN_BACK_TO_BOX = 24
+    REVERSE_TO_BOX =  25
 
-    FLAP_SEQUENCE = 25 
+    FLAP_SEQUENCE = 26  # open the flap to let balls out into the collection box, then close the flap 
 
 
 
