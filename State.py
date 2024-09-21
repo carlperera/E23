@@ -13,57 +13,50 @@ class State(Enum):
     # go to centre 
     ROTATING_FACE_CENTRE_START_LEFT = 4
     ROTATING_FACE_CENTRE_START_RIGHT = 5 
-    MOVE_TO_CENTRE = 6 
+    MOVE_TO_CENTRE_BALL = 6 
+    MOVE_TO_CENTRE_BOX = 7
 
-    # rotating in place to "explore" (go full 360)
-    ROTATE_EXPLORE_FULL_PRIMARY_PART_1 = 7
-    ROTATE_EXPLORE_FULL_PRIMARY_PART_2 = 8
+    # rotating in place to "explore" (go full 360 by doing 180 twice)
+    ROTATE_EXPLORE_FULL_PRIMARY_PART_1 = 8
+    ROTATE_EXPLORE_FULL_PRIMARY_PART_2 = 9
 
     # locked onto target 
-    ROTATE_LEFT_TARGET = 9 # locked onto target, just rotating to centire it in frame 
-    ROTATE_RIGHT_TARGET = 10  # locked onto target just rotating clockwise 
-    MOVE_TO_TARGET = 11 # moving to target but not close enough
-    CLOSE_TO_TARGET = 12  # close to target, switch to secondary camera? (<30% ??)
+    ROTATE_LEFT_TARGET = 10 # locked onto target, just rotating to centre it in frame 
+    ROTATE_RIGHT_TARGET = 11  # locked onto target just rotating clockwise 
+    MOVE_TO_TARGET = 12 # moving to target but not close enough
+    CLOSE_TO_TARGET = 13  # close to target, switch to secondary camera? (<30% of top frame??)
 
+    # rotating to face centre
+    ROTATE_FACE_CENTRE_BALL = 14
+ 
     # secondary camera
-    ROTATE_LEFT_SECONDARY = 13
-    ROTATE_RIGHT_SECONDARY = 14
-    MOVE_TO_TARGET_SECONDARY = 15
+    ROTATE_LEFT_SECONDARY = 15
+    ROTATE_RIGHT_SECONDARY = 16
+    MOVE_TO_TARGET_SECONDARY = 17
     
     # Pickup Sequence
-    PICKUP_BALL = 16   # actuate the servo, stops the state machine to actuate claw, then lower it down
+    PICKUP_BALL = 18  # actuate the servo, stops the state machine to actuate claw, then lower it down
 
     # PICKUP_IN_PROGRESS = 16  # Servo still lifting the ball up, start rotating to explore too at the same time (lock onto a different ball)
     # if the ball has disappaered from view, switch back to primary
-    ROTATE_EXPLORE_FULL_SECONDARY = 17    # rotate 360 in secondary camera, if the ball has disappaered from view
+    ROTATE_EXPLORE_FULL_SECONDARY = 19   # rotate 360 in secondary camera, if the ball has disappaered from view
   
     # Move to centre to rotate in place (explore)
-    ROTATE_FACE_CENTRE_BALL = 18 # face the centre to move to it, if you want to spot balls or the collection box (a safe zone)
-    ROTATE_EXPLORE = 19 # rotate in place 360 to find a ball if exists 
+    ROTATE_FACE_CENTRE_BALL = 20 # face the centre to move to it, if you want to spot balls or the collection box (a safe zone)
+    
+    ROTATE_EXPLORE = 21 # rotate in place 360 to find a ball if exists 
 
     # Delivery
-    BOX_DETECT_START = 20 # rotate in place 360 to see the box (at any (x,y) pos)
+    BOX_DETECT_START = 22 # rotate in place 360 to see the box (at any (x,y) pos)
         # otherwise if no box detected in current position, go to centre -> ROTATE_FACE_CENTRE
-    ROTATE_FACE_CENTRE_BOX = 21
+    ROTATE_FACE_CENTRE_BOX = 23
 
-    MOVE_TO_BOX = 22
-    CLOSE_TO_BOX  = 23
-    TURN_BACK_TO_BOX = 24
-    REVERSE_TO_BOX =  25
+    MOVE_TO_BOX = 24
+    CLOSE_TO_BOX  = 25
+    TURN_BACK_TO_BOX = 26
+    REVERSE_TO_BOX =  27
 
-    FLAP_SEQUENCE = 26  # open the flap to let balls out into the collection box, then close the flap 
-
-
-
-
-
-    
-
-
-
-
-
-
+    FLAP_SEQUENCE = 28  # open the flap to let balls out into the collection box, then close the flap 
 
 class StartPosition(Enum):
     """

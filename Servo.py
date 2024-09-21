@@ -9,7 +9,6 @@ class SERVO_PINS(Enum):
     PIN_CLAW_PWM1 = 13
     PIN_CLAW_PWM2 = 19
 
-
 class Servo:
 
     def __init__(self, pin):
@@ -45,8 +44,6 @@ class Flap(Servo):
         self.setAngle(135)
         sleep(1) 
 
-
-    
 # class Claw(Servo):
 #     def __init__(self):
 #         super().__init__(SERVO_PINS.PIN_CLAW_PWM.value)
@@ -101,7 +98,3 @@ class Claw:
     def close(self):
         self.setAngle(155)
         sleep(0)
-
-    
-       
-    
