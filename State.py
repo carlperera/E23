@@ -17,6 +17,9 @@ class State(Enum):
     MOVE_TO_CENTRE_BALL = auto() 
     MOVE_TO_CENTRE_BOX = auto()
 
+    # Rotating to face centre
+    ROTATE_FACE_CENTRE_BALL = auto()
+
     # Rotating in place to "explore" (go full 360 by doing 180 twice)
     ROTATE_EXPLORE_FULL_PRIMARY_PART_1 = auto()
     ROTATE_EXPLORE_FULL_PRIMARY_PART_2 = auto()
@@ -26,9 +29,6 @@ class State(Enum):
     ROTATE_RIGHT_TARGET = auto()  # locked onto target just rotating clockwise 
     MOVE_TO_TARGET = auto()  # moving to target but not close enough
     CLOSE_TO_TARGET = auto()  # close to target, switch to secondary camera? (<30% of top frame)
-
-    # Rotating to face centre
-    ROTATE_FACE_CENTRE_BALL = auto()
  
     # Secondary camera
     ROTATE_LEFT_SECONDARY = auto()

@@ -13,8 +13,6 @@ WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000
 CPR = 48
 GEAR_RATIO = 74.38
 
-# TODO: add all of the secondary states here 
-SECONDARY_CAM_STATES = [State.CLOSE_TO_TARGET, State.MOVE_TO_TARGET_SECONDARY, State.ROTATE_RIGHT_SECONDARY, State.ROTATE_LEFT_SECONDARY]
 
 class Scaling(Enum):
     ROTATE = 4.2  # 3.7
@@ -58,6 +56,25 @@ class RotateDirection(Enum):
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12
     PIN_CLAW_PWM = 13
+
+"""
+Dimension of standard singles court (not including the left and right outer edges) is 
+width = 8.27 m
+height = 23.77 m
+
+Since the given dimensions seeem to have a little bit taken off the height, we have taken this into consideration
+
+"""
+# TODO: someone go and measure or ask the dems for the quadrant dimensions 
+class COURT_DIMS(Enum):
+    COURT_X = 10
+    COURT_Y = 4
+
+class COLLECTION_BOX_DIMS(Enum):
+    LENGTH = 60/100
+    WIDTH = 45/100
+    HEIGHT = 16/100
+    HEIGHT_TOLERANCE = 2/100
 
 
 
@@ -239,7 +256,7 @@ class Robot:
         motor2_steps = self.motor2_encoder.steps
 
         angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-        angle_deg = self.angle_scale_down(angle_raw)
+        angle_deg = self.convert_actual_angle_to_encoder_angle(angle_raw)
         print(f"angle_diff = {angle_deg}")
         self.update_orientation(0-angle_deg)
 
@@ -259,7 +276,7 @@ class Robot:
         motor2_steps = self.motor2_encoder.steps
 
         angle_raw= self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-        angle_deg = self.angle_scale_down(angle_raw)
+        angle_deg = self.convert_actual_angle_to_encoder_angle(angle_raw)
         self.update_orientation(angle_deg)
 
         self.reset_encoders()
@@ -472,6 +489,184 @@ class Robot:
         else:
             self.backward_test(abs(distance), speed)
 
+    
+    """ START: ------------------------------- CALIBRATION -------------------------------
+    """
+    def move_calibrate(self, distance, speed):
+
+        if distance > 0: 
+            self.forward_calibrate(distance, speed)
+        else:
+            self.backward_calibrate(abs(distance), speed)
+
+    def backward_calibrate(self, distance, speed):
+        encoder_steps = self.dist_to_encoder_steps(distance)
+
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.off()
+        self.motor1_in2.on()
+        self.motor2_in1.off()
+        self.motor2_in2.on()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving forward
+        while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
+            time.sleep(0.01)
+
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        motor1_steps = abs(self.motor1_encoder.steps)
+        motor2_steps = abs(self.motor2_encoder.steps)
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        self.update_position(dist_travelled)
+        self.reset_encoders()
+
+
+    def forward_calibrate(self, distance, speed):
+        encoder_steps = self.dist_to_encoder_steps(distance)
+
+        self.reset_encoders()
+
+        # Set motor direction for forward movement
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        # Start moving forward
+        while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
+            time.sleep(0.01)
+
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_travelled = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+
+        self.update_position(dist_travelled)
+        self.reset_encoders()
+
+    def rotate_calibrate(self, angle_deg, speed):
+        """
+        Rotates the robot by a specific angle (in degrees) at the given speed.
+
+        -> for a turn in place (robot rotating around its centre) the radius is half the separation distance 
+            -> WHEEL_SEP/2
+        -> arc length for desired turn: 
+            -> L = theta*WHEEL_SEP/2
+        -> arc length into wheel rotations
+            -> rotations = L/(2*pi*WHEEL_RAD)
+        Args:
+            :
+        """
+        self.reset_encoders()
+        
+        # Determine direction based on the sign of the angle
+    
+        if angle_deg < 0:
+            self.rotate_clockwise_calibrate(abs(angle_deg), speed)
+        else:
+            self.rotate_anticlockwise_calibrate(angle_deg, speed)
+
+
+    
+    def rotate_clockwise_calibrate(self, angle, speed=0.5):
+        """Rotates the robot clockwise by a specific angle at the given speed."""
+        encoder_steps = self.calculate_encoder_steps_for_rotation(abs(angle))
+        self.reset_encoders()
+
+        # Kp_rotate = 0.01  # Proportional gain for rotation adjustment
+
+        # Set motor directions for clockwise rotation
+        self.motor1_in1.on()
+        self.motor1_in2.off()
+        self.motor2_in1.off()
+        self.motor2_in2.on()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+            # error = self.motor1_encoder.steps + self.motor2_encoder.steps
+            # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            time.sleep(0.01)
+
+
+
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        self.motor1_in1.off()
+        self.motor1_in2.off()
+        self.motor2_in1.off()
+        self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        angle_deg = self.encoder_steps_to_angle(motor2_steps)
+
+        self.update_orientation(0-angle_deg)
+        self.reset_encoders()
+
+    
+    def rotate_anticlockwise_calibrate(self, angle, speed=0.5):
+        """Rotates the robot counterclockwise by a specific angle at the given speed."""
+        encoder_steps = self.calculate_encoder_steps_for_rotation(abs(angle))
+        self.reset_encoders()
+
+        Kp_rotate = 0.01  # Proportional gain for rotation adjustment
+
+        # Set motor directions for counterclockwise rotation
+        self.motor1_in1.off()
+        self.motor1_in2.on()
+        self.motor2_in1.on()
+        self.motor2_in2.off()
+
+        self.motor1_pwm.value = speed
+        self.motor2_pwm.value = speed
+
+        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+            # error = self.motor1_encoder.steps + self.motor2_encoder.steps
+            # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
+            time.sleep(0.01)
+
+
+        self.motor1_pwm.off()
+        self.motor2_pwm.off()
+
+        self.motor1_in1.off()
+        self.motor1_in2.off()
+        self.motor2_in1.off()
+        self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        angle_deg = self.encoder_steps_to_angle(motor2_steps)
+
+        self.update_orientation(angle_deg)
+        self.reset_encoders()
+
+    """ END: ------------------------------- CALIBRATION -------------------------------
+    """
+    
+
+
     def backward_test(self, distance, speed):
         encoder_steps = self.dist_to_encoder_steps(distance)
         self.reset_encoders()
@@ -530,6 +725,8 @@ class Robot:
 
         self.update_position(dist_travelled)
         self.reset_encoders()
+
+    
 
 
     def move_forward(self, distance, speed=0.5):
@@ -698,18 +895,22 @@ class Robot:
         self.reset_encoders()
         
         # Determine direction based on the sign of the angle
-        angle_raw = self.angle_scale_down(angle_degrees)
+        angle_raw = self.convert_actual_angle_to_encoder_angle(angle_degrees)  # scaled down
     
         if angle_degrees < 0:
-            self.rotate_clockwise(angle_raw, speed)
+            self.rotate_clockwise(abs(angle_raw), speed)
         else:
             self.rotate_anticlockwise(angle_raw, speed)
     
-    def angle_scale_down(self, angle_raw):
+    def convert_actual_angle_to_encoder_angle(self, angle_raw):
+        """ scales the user desired input angle into the encoder angle (right now it is SCALED DOWN)
+        """
         angle_actual = (angle_raw - Constants.ROTATE.value)/Scaling.ROTATE.value
         return angle_actual 
 
-    def angle_scale_up(self, angle_actual):
+    def convert_encoder_angle_to_actual_angle(self, angle_actual):
+        """ scales raw encoder angle into the user desired input (right now it is SCALED UP)
+        """
         angle_raw = angle_actual * Scaling.ROTATE.value + Constants.ROTATE.value
         return angle_raw
 
@@ -802,7 +1003,7 @@ class Robot:
 
         print(f"motor1 steps = {motor1_steps} --- motor2_steps = {motor2_steps}")
         angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-        angle_rotated = self.angle_scale_up(angle_deg)
+        angle_rotated = self.convert_encoder_angle_to_actual_angle(angle_deg)
 
         return angle_rotated
     
@@ -847,6 +1048,8 @@ class Robot:
     
 
     def handle_state(self, frame):
+        # TODO: add all of the secondary states here 
+        SECONDARY_CAM_STATES = [State.CLOSE_TO_TARGET, State.MOVE_TO_TARGET_SECONDARY, State.ROTATE_RIGHT_SECONDARY, State.ROTATE_LEFT_SECONDARY]
 
         # TODO: changing the camNums is not just related to a single state anymore 
         if self.state in SECONDARY_CAM_STATES:
@@ -1101,10 +1304,12 @@ class Robot:
                                 self.stop_clockwise()
                                 self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                                 self.state = State.ROTATE_RIGHT_TARGET
-            
             case State.MOVE_TO_CENTRE_BALL:
                 match vision_x:
                     case -1: # nothing detected, keep moving to centre
+
+
+                        # check we've already reached the centre
                         distance_travelled =  self.get_dist_moved()
 
                         if distance_travelled >= self.calibrated_centre_move: 
@@ -1129,6 +1334,34 @@ class Robot:
                         self.stop_forward()
                         self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
+
+            # case State.MOVE_TO_CENTRE_BALL:
+            #     match vision_x:
+            #         case -1: # nothing detected, keep moving to centre
+            #             distance_travelled =  self.get_dist_moved()
+
+            #             if distance_travelled >= self.calibrated_centre_move: 
+            #                 self.stop_forward()
+            #                 self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+            #                 self.state = State.ROTATING_START_RIGHT_EXPLORE
+                
+            #         case 2: # left 
+            #             # keep spinning     
+            #             self.stop_forward()
+            #             self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+            #             self.state = State.ROTATE_LEFT_TARGET 
+            #         case 1:
+            #             self.stop_forward()
+            #             if vision_y == 1: # close 
+            #                 self.start_forward(Speeds.CLOSE_TO_TARGET.value)
+            #                 self.state = State.CLOSE_TO_TARGET
+            #             else:
+            #                 self.start_forward(Speeds.MOVING_TO_TARGET.value)
+            #                 self.state = State.MOVE_TO_TARGET
+            #         case 3: # to the right 
+            #             self.stop_forward()
+            #             self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+            #             self.state = State.ROTATE_RIGHT_TARGET 
 
 
             case State.ROTATE_FACE_CENTRE_BOX:

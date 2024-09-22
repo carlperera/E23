@@ -1,22 +1,28 @@
-# E23
+# E23 
 
-## GPIO Pin layout (as of 24th Aug)
+
+## HARDWARE 
+
+
+### PIN LAYOUT
+#### GPIO Pin layout (as of 24th Aug)
 PIN_MOTOR1_IN1 = 17 # LOW - good
 PIN_MOTOR1_IN2 = 27 # LOW -good 
 PIN_MOTOR1_PWM_ENABLE = 18 # LOW - good 
 PIN_MOTOR1_A_OUT = 21# LOW - good 
 PIN_MOTOR1_B_OUT = 20 # LOW - good
 
-# motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
+#### motor 1 outputs for feedback (yellow and white) - signal outputted by encoder into the pi pwm 
 PIN_MOTOR2_IN1 = 23 # LOW - good
 PIN_MOTOR2_IN2 = 24 # LOW -good 
 PIN_MOTOR2_PWM_ENABLE = 9 # LOW - good 
 PIN_MOTOR2_A_OUT = 14# LOW - good 
 PIN_MOTOR2_B_OUT = 15 # LOW - good
-
 PIN_SERVO = 12
 
-# Parameters that can be changed in green_ball_tracker
+
+## VISION
+## Parameters that can be changed in green_ball_tracker
 capWidth and capHeight = The Width and Height of the frame respectively. CHANGE THE LINE DETECTION SUBTRACTION TO HALF OF WHATEVER THE HEIGHT IS IF THE HEIGHT IS CHANGED. 
 i.e if min(y1, y2) > y_below - 960/2
 Gaussian Blur kernel size must be an odd number
@@ -27,10 +33,10 @@ cv2.VideoCapture(INSERT_CAMERA_NUMBER_HERE)
 
 min_line_length = minimum pixel length for lines to be detected using Hough Transform
 
-# PLEASE NOTE CHANGING THE CAMERA FRAME RESOLUTION WILL REQUIRE RECALIBRATING ALL OF THE MINAREA AND MAXAREA AND RADIUS VALS.
+#### PLEASE NOTE CHANGING THE CAMERA FRAME RESOLUTION WILL REQUIRE RECALIBRATING ALL OF THE MINAREA AND MAXAREA AND RADIUS VALS.
 
-# Milestone 2
-## Delivery to collection box
+## Milestone 2
+### Delivery to collection box
 1. How to find the collection box?
     1.1 vision to detect brown? 
     1.2 hard-coded with odometry?
@@ -51,4 +57,10 @@ min_line_length = minimum pixel length for lines to be detected using Hough Tran
 
 2. states are all done - ready to be tested 
 
-3. 
+3. claw attached
+
+4. collection tray attached on top
+
+5. flap attached on top 
+
+
