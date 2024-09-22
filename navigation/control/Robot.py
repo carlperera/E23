@@ -847,7 +847,7 @@ class Robot:
                             self.stop_rotating_anticlockwise()
                             print(f"angle_rotated = {angle_rotated}")
                             self.start_forward(Speeds.MOVING_TO_CENTRE.value)
-                            self.state = State.MOVE_TO_CENTRE
+                            self.state = State.MOVE_TO_CENTRE_BALL
                         else:
                             pass # keep rotating
                 
@@ -870,7 +870,7 @@ class Robot:
                         self.start_rotating_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
                 
-            case State.MOVE_TO_CENTRE:
+            case State.MOVE_TO_CENTRE_BALL:
                 match vision_x:
                     case -1: # nothing detected, keep moving to centre
                         distance_travelled =  self.get_dist_moved()
