@@ -40,3 +40,15 @@ min_line_length = minimum pixel length for lines to be detected using Hough Tran
     3.1 odometry would ensure that we never step outside of the borders, but;
     3.2 if we detect a ball on another quadrant, there's no way to tell the robot to not navigate towards it 
         3.2.1 how to make robot know that a detected ball is also within the quadrant bounds?
+
+
+
+
+# TODOs 
+
+## TODO 22nd Sept 2024
+1. Servos need to have their directions inverted relative to each other since they're going to be facing each other. Otherwise we will have to redesign the claw mount that attaches to the servos
+
+2. states are all done - ready to be tested 
+
+3. 

@@ -5,7 +5,7 @@ from time import sleep
 from enum import Enum
 
 class SERVO_PINS(Enum):
-    PIN_FLAP_PWM = 12
+    PIN_FLAP_PWM = 12 # TODO: what's the pin for the flap? # TODO: does flap also need 2 pins or nah
     PIN_CLAW_PWM1 = 13
     PIN_CLAW_PWM2 = 12 # Originally 19, 12 for testing
 
@@ -61,7 +61,7 @@ class Claw:
     def __init__(self):
         self.pin1 = SERVO_PINS.PIN_CLAW_PWM1.value
         self.pin2 = SERVO_PINS.PIN_CLAW_PWM2.value
-        self.channel_list = (self.pin1, self.pin2)
+        # self.channel_list = (self.pin1, self.pin2)
 
         GPIO.setup(self.pin1, GPIO.OUT)
         GPIO.setup(self.pin2, GPIO.OUT)
@@ -71,7 +71,8 @@ class Claw:
 
         self.pwm2 = GPIO.PWM(self.pin2, 50)
         self.pwm2.start(0)
-    
+
+    # TODO: the two servos need to reverse direction (since they're going to be inverted)
     def setAngle(self, angle):
         duty = angle / 18 + 3
         self.pwm1.start(duty)

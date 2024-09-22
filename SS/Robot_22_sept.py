@@ -8,8 +8,8 @@ from Servo import Flap, Claw
 import RPi.GPIO as GPIO
 from enum import Enum
 
-WHEEL_SEP = 238/1000    # previously 227/1000  
-WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000 
+WHEEL_SEP = 227/1000
+WHEEL_RAD = 61/2/1000 
 CPR = 48
 GEAR_RATIO = 74.38
 
@@ -113,8 +113,8 @@ class Robot:
         self.tray_ball_threshold = Constants.TRAY_BALL_THRESHOLD # number of balls in robot tray at which point robot goes to collection box
 
         # ----------------  ----------------
-        # self.flap = Flap()
-        # self.claw = Claw()
+        self.flap = Flap()
+        self.claw = Claw()
         
   
     def shutdown(self):
@@ -793,7 +793,7 @@ class Robot:
         angle_deg = self.encoder_steps_to_angle(motor2_steps)
 
         self.update_orientation(angle_deg)
-        self.reset_encoders()
+        self.reset_enco ders()
        
 
     def calc_rotated_angle(self):
@@ -954,6 +954,7 @@ class Robot:
                         self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET
 
+
             case State.ROTATING_FACE_CENTRE_START_LEFT:
 
                 if self.update_and_get_orientation() >= 45: 
@@ -971,7 +972,7 @@ class Robot:
                 else:
                     pass # keep rotating
             
-            # rotate full 360 (Twice)
+            # if this full 360 is not accurate, then break this into two states, both make it rotate 180 degrees (but do this twice)
             case State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1:
                 match vision_x:
                         case -1: # nothing detected

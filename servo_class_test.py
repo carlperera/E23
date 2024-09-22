@@ -6,7 +6,6 @@ if __name__ == "__main__":
     GPIO.setmode(GPIO.BCM)
     claw = Claw()
  
-
     try:
 
         # simulate flap release USE PIN 12 FOR FLAP
