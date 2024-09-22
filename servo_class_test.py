@@ -10,9 +10,9 @@ if __name__ == "__main__":
     try:
 
         # simulate flap release USE PIN 12 FOR FLAP
-        
-        claw.open()
-        claw.close()
+        while True: 
+            claw.open()
+            claw.close()
 
         # #simulate claw USE PIN 13 FOR CLAW
         # servo.rotate_to_180()

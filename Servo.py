@@ -7,7 +7,7 @@ from enum import Enum
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12
     PIN_CLAW_PWM1 = 13
-    PIN_CLAW_PWM2 = 19
+    PIN_CLAW_PWM2 = 12 # Originally 19, 12 for testing
 
 
 class Servo:
@@ -64,6 +64,7 @@ class Claw:
     def __init__(self):
         self.pin1 = SERVO_PINS.PIN_CLAW_PWM1.value
         self.pin2 = SERVO_PINS.PIN_CLAW_PWM2.value
+        self.channel_list = (self.pin1, self.pin2)
 
         GPIO.setup(self.pin1, GPIO.OUT)
         GPIO.setup(self.pin2, GPIO.OUT)
@@ -76,16 +77,19 @@ class Claw:
     
     def setAngle(self, angle):
         duty = angle / 18 + 3
-        GPIO.output(self.pin1, True)
-        GPIO.output(self.pin2, True)
-        self.pwm1.ChangeDutyCycle(duty)
-        self.pwm2.ChangeDutyCycle(duty)
-        sleep(0.005)
-        GPIO.output(self.pin1, False)
-        GPIO.output(self.pin2, False)
-        self.pwm1.ChangeDutyCycle(duty)
-        self.pwm2.ChangeDutyCycle(duty)
-        sleep(0.005)
+        self.pwm1.start(duty)
+        self.pwm2.start(duty)
+        sleep(1)
+        # GPIO.output(self.channel_list, True)
+        # # GPIO.output(self.pin2, True)
+        # self.pwm1.ChangeDutyCycle(duty)
+        # self.pwm2.ChangeDutyCycle(duty)
+        # sleep(0.005)
+        # GPIO.output(self.channel_list, False)
+        # # GPIO.output(self.pin2, False)
+        # self.pwm1.ChangeDutyCycle(duty)
+        # self.pwm2.ChangeDutyCycle(duty)
+        # sleep(0.005)
       
     
     def stop(self):
@@ -95,7 +99,7 @@ class Claw:
         GPIO.cleanup()
 
     def open(self):
-        self.setAngle(-15)
+        self.setAngle(0)
         sleep(1)
     
     def close(self):
