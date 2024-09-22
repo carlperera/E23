@@ -20,7 +20,7 @@ if __name__ == "__main__":
         input(f"Current value: {angle_test}. Press Enter to continue...")
 
         # robot.move_test(distance=0.1, speed=1.0)
-        robot.rotate_clockwise_calibrate(angle_test, speed = 0.5)
+        robot.rotate_clockwise_calibrate(angle_test, speed = 1.0)
     
         print(f"(x,y) = ({round(robot.x,2), round(robot.y,2)})  --- angle = {round(robot.th,4)}")
     
