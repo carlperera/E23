@@ -908,7 +908,7 @@ class Robot:
                         if self.check_rotated_90_at_start():
                             self.stop_clockwise()
                             self.start_anticlockwise() # rotate to face the centre
-                            self.state = State.ROTATING_FACE_CENTRE_START_LEFT 
+                            self.state = State.ROTATING_FACE_CENTRE_START_LEFT # TODO: could merge this with the ROTATE_FACE_CENTRE_BALL state?
                         else:
                             pass # keep rotating  
                     case 2: #   # ball detected on left side of frame
@@ -934,7 +934,7 @@ class Robot:
                         if self.check_rotated_90_at_start():
                             self.stop_anticlockwise()
                             self.start_clockwise() # rotate to face the centre
-                            self.state = State.ROTATING_FACE_CENTRE_START_RIGHT
+                            self.state = State.ROTATING_FACE_CENTRE_START_RIGHT # TODO: could merge this with the ROTATE_FACE_CENTRE_BALL state?
                         else:
                             pass # keep rotating  
                     case 2: #   # ball detected on left side of frame
