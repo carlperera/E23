@@ -72,12 +72,14 @@ class Claw:
         self.pwm2 = GPIO.PWM(self.pin2, 50)
         self.pwm2.start(0)
 
+        self.setAngle(170,self.pwm1) # Servo 1 needs to start in the fully turned direction
+
     # TODO: the two servos need to reverse direction (since they're going to be inverted)
-    def setAngle(self, angle):
+    def setAngle(self, angle, servo):
         duty = angle / 18 + 3
-        self.pwm1.start(duty)
-        self.pwm2.start(duty)
-        sleep(1)
+        servo.start(duty)
+        # self.pwm2.start(duty)
+        # sleep(1)
         # GPIO.output(self.channel_list, True)
         # # GPIO.output(self.pin2, True)
         # self.pwm1.ChangeDutyCycle(duty)
@@ -91,15 +93,18 @@ class Claw:
       
     
     def stop(self):
-        self.setAngle(0)
+        self.setAngle(0, self.pwm1)
+        self.setAngle(0, self.pwm2)
         self.pwm1.stop()
         self.pwm2.stop()
         GPIO.cleanup()
 
     def open(self):
-        self.setAngle(0)
+        self.setAngle(0, self.pwm1) # Make servo 1 go back to starting pos
+        self.setAngle(175, self.pwm2) # Make servo 2 go to 180 degrees
         sleep(1)
     
     def close(self):
-        self.setAngle(155)
-        sleep(0)
+        self.setAngle(170,self.pwm1) # Make servo 1 go to 180 degrees
+        self.setAngle(0, self.pwm2) # Make servo 2 go back to starting pos
+        sleep(1)

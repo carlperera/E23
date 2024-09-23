@@ -18,6 +18,7 @@ if __name__ == "__main__":
         # servo.rotate_from_180()
 
     except KeyboardInterrupt:
+        claw.close()
         claw.stop()
     # finally:
     #     # servo.stop()  # Ensure cleanup happens
