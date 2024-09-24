@@ -1056,9 +1056,10 @@ class Robot:
             camNum = 2 
         else:
             camNum = 1
+        
         # track ball and line detect  
         vision_x, vision_y = self.vision.track_ball(frame, camNum)
-
+        
         print(f"vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
 
         old_state = self.state
