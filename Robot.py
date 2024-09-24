@@ -13,13 +13,20 @@ WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000
 CPR = 48
 GEAR_RATIO = 74.38
 
+MOTOR2_SCALING = 0.75
 
 class Scaling(Enum):
+    ROTATE_ANTICLOCKWISE = 1.95
+    ROTATE_CLOCKWISE = 2
+
     ROTATE = 4.2  # 3.7
     FORWARD = 3.486  # 4.2
     BACK = 1.0
 
-class Constants(Enum):
+class Constants(Enum): 
+    ROTATE_ANTICLOCKWISE = 14.8 / 100 + 1500/100
+    ROTATE_CLOCKWISE = 21.9 / 100 #  + 1/100
+
     ROTATE = 3 / 100
     FORWARD = 4.282 / 100
     TRAY_BALL_THRESHOLD = 4
@@ -147,8 +154,9 @@ class Robot:
         self.motor2_encoder.steps = 0
 
     def update_and_get_orientation(self):
-        angle_rotated = self.calc_rotated_angle()
         rotating_direction = self.get_rotating_direction()
+        angle_rotated = self.calc_rotated_angle(rotating_direction)
+        
 
         # reset the encoders 
         self.reset_encoders() 
@@ -541,7 +549,7 @@ class Robot:
         self.motor2_in2.off()
 
         self.motor1_pwm.value = speed
-        self.motor2_pwm.value = speed
+        self.motor2_pwm.value = speed*MOTOR2_SCALING
 
         # Start moving forward
         while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
@@ -895,11 +903,13 @@ class Robot:
         self.reset_encoders()
         
         # Determine direction based on the sign of the angle
-        angle_raw = self.convert_actual_angle_to_encoder_angle(angle_degrees)  # scaled down
+        # angle_raw = self.convert_actual_angle_to_encoder_angle(angle_degrees)  # scaled down
     
         if angle_degrees < 0:
-            self.rotate_clockwise(abs(angle_raw), speed)
+            angle_raw = self.convert_encoder_to_actual_angle_clockwise(abs(angle_degrees))
+            self.rotate_clockwise(angle_raw, speed)
         else:
+            angle_raw = self.convert_encoder_to_actual_angle_anticlockwise(angle_degrees)
             self.rotate_anticlockwise(angle_raw, speed)
     
     def convert_actual_angle_to_encoder_angle(self, angle_raw):
@@ -908,13 +918,29 @@ class Robot:
         angle_actual = (angle_raw - Constants.ROTATE.value)/Scaling.ROTATE.value
         return angle_actual 
 
-    def convert_encoder_angle_to_actual_angle(self, angle_actual):
+    def convert_encoder_angle_to_actual_angle(self, angle_actual, rotating_direction):
         """ scales raw encoder angle into the user desired input (right now it is SCALED UP)
         """
-        angle_raw = angle_actual * Scaling.ROTATE.value + Constants.ROTATE.value
+        match rotating_direction:
+            case RotateDirection.ANTICLOCKWISE:
+                return self.convert_encoder_to_actual_angle_anticlockwise(angle_actual)
+            case RotateDirection.CLOCKWISE:
+                return self.convert_encoder_to_actual_angle_clockwise(angle_actual)
+
+    def convert_encoder_to_actual_angle_clockwise(self, angle_actual):
+        if (angle_actual - Constants.ROTATE_CLOCKWISE.value ) <= 0:
+            angle_raw = 0 
+            return angle_raw
+
+        angle_raw = (angle_actual - Constants.ROTATE_CLOCKWISE.value )/Scaling.ROTATE_CLOCKWISE.value 
+        print(angle_raw)
         return angle_raw
-
-
+    
+    def convert_encoder_to_actual_angle_anticlockwise(self, angle_actual):
+        angle_raw = (angle_actual - Constants.ROTATE_ANTICLOCKWISE.value)/Scaling.ROTATE_ANTICLOCKWISE.value
+        print(angle_raw) 
+        return angle_raw
+    
     def rotate_clockwise(self, angle, speed=0.5):
         """Rotates the robot clockwise by a specific angle at the given speed."""
         encoder_steps = self.calculate_encoder_steps_for_rotation(abs(angle))
@@ -931,7 +957,7 @@ class Robot:
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
 
-        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+        while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
             # error = self.motor1_encoder.steps + self.motor2_encoder.steps
             # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
@@ -973,7 +999,7 @@ class Robot:
         self.motor1_pwm.value = speed
         self.motor2_pwm.value = speed
 
-        while abs(self.motor1_encoder.steps) < encoder_steps or abs(self.motor2_encoder.steps) < encoder_steps:
+        while abs(self.motor1_encoder.steps) < encoder_steps and abs(self.motor2_encoder.steps) < encoder_steps:
             # error = self.motor1_encoder.steps + self.motor2_encoder.steps
             # self.motor1_pwm.value = max(0, min(1, speed - Kp_rotate * error))
             # self.motor2_pwm.value = max(0, min(1, speed - Kp_rotate * error))
@@ -997,13 +1023,15 @@ class Robot:
         self.reset_encoders()
        
 
-    def calc_rotated_angle(self):
+    def calc_rotated_angle(self, rotating_direction):
+
+
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
 
         print(f"motor1 steps = {motor1_steps} --- motor2_steps = {motor2_steps}")
         angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
-        angle_rotated = self.convert_encoder_angle_to_actual_angle(angle_deg)
+        angle_rotated = self.convert_encoder_angle_to_actual_angle(angle_deg, rotating_direction)
 
         return angle_rotated
     
