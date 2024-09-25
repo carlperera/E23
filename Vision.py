@@ -1,13 +1,19 @@
 import cv2
 import numpy as np 
-from enum import Enum
+from enum import Enum, auto
 
-class VISION_X(Enum):
+class VISION_X(Enum): # TODO: change these to use auto
     LINE_DETECTED = -1
     BALL_CENTRE = 1
     BALL_LEFT = 2
     BALL_RIGHT = 3
     BALL_IN_GRABBER = 4
+
+    BOX_RIGHT = 5
+    BOX_LEFT = 6
+    BOX_CENTRE = 7
+
+    NO_BOX_DETECTED = 8 
 
 class VISION_Y(Enum):
     LINE_DETECTED = - 1

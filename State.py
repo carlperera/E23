@@ -48,12 +48,22 @@ class State(Enum):
     BOX_DETECT_START = auto()  # rotate in place 360 to see the box (at any (x,y) pos)
     ROTATE_FACE_CENTRE_BOX = auto()
 
+    ROTATE_LEFT_BOX = auto()
+    ROTATE_RIGHT_BOX = auto()
     MOVE_TO_BOX = auto()
+
     CLOSE_TO_BOX = auto()
     TURN_BACK_TO_BOX = auto()
     REVERSE_TO_BOX = auto()
 
+    # if at centre 
+    ROTATE_EXPLORE_BOX_PART_1 = auto()
+    ROTATE_EXPLORE_BOX_PART_2 = auto()
+
     FLAP_SEQUENCE = auto()  # open the flap to let balls out into the collection box, then close the flap 
+
+   
+
 
 class StartPosition(Enum):
     """
