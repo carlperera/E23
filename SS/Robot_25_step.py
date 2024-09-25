@@ -35,10 +35,10 @@ class Constants(Enum):
     SIMULATION_DURATION_S = 10*60
 
 class Speeds(Enum):
-    MOVING_TO_TARGET = 1.0
-    ROTATING_EXPLORE = 0.2
-    CLOSE_TO_TARGET = 0.4
-    ROTATE_TO_TARGET = 0.15
+    MOVING_TO_TARGET = 0.5
+    ROTATING_EXPLORE = 0.5
+    CLOSE_TO_TARGET = 0.3
+    ROTATE_TO_TARGET = 0.5
     RETURN_ROTATE = 0.8
     ROTATE_TO_CENTRE = 0.6
     RETREAT_BACK = 0.6
@@ -179,12 +179,13 @@ class Robot:
     
     def get_rotating_direction(self):
         # check if rotating clockwise
-        if self.motor1_in1.value == 1 and self.motor1_in2.value == 0 and self.motor2_in1 == 0 and self.motor2_in2 == 1:
+        if self.motor1_in1.value == 1 and self.motor1_in2.value == 0 and self.motor2_in1.value == 0 and self.motor2_in2.value == 1:
             return RotateDirection.CLOCKWISE
         
         # check if rotating anticlockwise 
-        elif self.motor1_in1.value == 0 and self.motor1_in2.value == 1 and self.motor2_in1 == 1 and self.motor2_in2 == 0:
+        elif self.motor1_in1.value == 0 and self.motor1_in2.value == 1 and self.motor2_in1.value == 1 and self.motor2_in2.value == 0:
             return RotateDirection.ANTICLOCKWISE
+        print(f"{self.motor1_in1.value} - {self.motor1_in2.value} - {self.motor2_in1.value} - {self.motor2_in2.value}")
         return None
     
     def get_orientation(self):
@@ -202,7 +203,7 @@ class Robot:
         return self.x
 
     def get_y(self):
-        self.y
+        return self.y
 
     def distance_per_step(self):
         wheel_rotatations_per_step = 1 / (CPR*GEAR_RATIO)
@@ -738,7 +739,6 @@ class Robot:
         self.update_position(dist_travelled)
         self.reset_encoders()
 
-
     def move_forward(self, distance, speed=0.5):
         """
         Moves the robot forward by a specific distance at the given speed.
@@ -1115,7 +1115,7 @@ class Robot:
                             self.start_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3: # ball in frame to right side 
-                        self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
+                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.START_RIGHT: # start on the bottom right side of the quadrant (facing 9 o'clock)
@@ -1143,7 +1143,7 @@ class Robot:
                         # check if rotated to 90 degrees already 
                         if self.check_rotated_90_at_start():
                             self.stop_clockwise()
-                            self.start_anticlockwise() # rotate to face the centre
+                            self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value) # rotate to face the centre
                             self.state = State.ROTATING_FACE_CENTRE_START_LEFT # TODO: could merge this with the ROTATE_FACE_CENTRE_BALL state?
                         else:
                             pass # keep rotating  
@@ -1169,7 +1169,7 @@ class Robot:
                         # check if rotated to 90 degrees already 
                         if self.check_rotated_90_at_start():
                             self.stop_anticlockwise()
-                            self.start_clockwise() # rotate to face the centre
+                            self.start_clockwise(speed=Speeds.ROTATE_TO_CENTRE.value) # rotate to face the centre
                             self.state = State.ROTATING_FACE_CENTRE_START_RIGHT # TODO: could merge this with the ROTATE_FACE_CENTRE_BALL state?
                         else:
                             pass # keep rotating  
@@ -1391,6 +1391,7 @@ class Robot:
                     case 3:  # ball to right of the frame, keep rotating clockwise     
                         pass
             case State.ROTATE_LEFT_TARGET:
+            
                 match vision_x:
                     case -1: # the ball has left the frame 
                         self.stop_anticlockwise()
@@ -1400,13 +1401,11 @@ class Robot:
                         print("in rotate left, keep in rotate left")
                         pass 
                     case 1: # ball in centre of frame so start moving forward
-                        
+                        self.stop_anticlockwise()
                         if vision_y == 1: # close 
-                            self.stop_anticlockwise()
                             self.move_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: # not close 
-                            self.stop_anticlockwise()
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
                     case 3:  # ball now to right of the frame, rotate to right  
@@ -1416,10 +1415,13 @@ class Robot:
 
             case State.MOVE_TO_TARGET:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_forward()
-                        self.start_anticlockwise(speed = Speeds.ROTATING_EXPLORE.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+                    case -1: # nothing detected, keep moving to centre
+                        distance_travelled =  self.get_dist_moved()
+
+                        if distance_travelled >= self.calibrated_centre_move: 
+                            self.stop_forward()
+                            self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                            self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
                     case 2:  # ball to the left so so readjust 
                         self.stop_forward()
                         self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
@@ -1429,19 +1431,21 @@ class Robot:
                             self.stop_forward() #stop moving first
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET
+                            
                         else: # not close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                     case 3:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
                         self.start_clockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET
+                
             case State.CLOSE_TO_TARGET:
-                print("IN CLOSE TO TARGET ------------------")
-                if vision_x == 4 and vision_y == 2:
+                # Need secondary camera rotate left and right 
+                if vision_x == 4 and vision_y == 4:
                     self.stop_forward()
                     print("GRABBED ball!")
-                    self.start_backward(speed=Speeds.RETREAT_BACK.value)
-                    self.state = State.START_RETURN
+                    # self.start_backward(speed=Speeds.RETREAT_BACK.value)
+                    self.state = State.PICKUP_BALL
                 else:
                     pass
 
@@ -1619,7 +1623,6 @@ class Robot:
                         else: #not close
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
-
                     case 3:
                         match rotating_direction:
                             case RotateDirection.ANTICLOCKWISE:
@@ -1740,7 +1743,7 @@ class Robot:
                     self.stop_forward()
                     print("GRABBED ball!")
                     self.start_backward(speed=Speeds.RETREAT_BACK.value)
-                    self.state = State.START_RETURN
+                    self.state = State.PICKUP_BALL
                 else:
                     pass
             

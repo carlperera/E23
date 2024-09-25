@@ -28,11 +28,11 @@ while True: # for each frame from camera
         # if curr_state == "2":
             # ret, frame = vision.camera_secondary.read()
         # else:
-        ret, frame = vision.camera_primary.read()
+        ret, frame = vision.camera_secondary.read()
 
-        # vision_x, vision_y = vision.track_ball(frame)
+        vision_x, vision_y = vision.track_ball(frame, 2)
 
-        banchod_out = vision.banchod_detect(frame)
+        # banchod_out = vision.banchod_detect(frame)
         
         
         if not ret:
@@ -41,7 +41,7 @@ while True: # for each frame from camera
 
         # ---------------------------- END SIMULATION ----------------------------
         # cv2.imshow("Webcam", frame)
-        cv2.imshow("Banchod detect", banchod_out)
+        # cv2.imshow("Banchod detect", banchod_out)
         cv2.imshow("Cam", frame)
         
     

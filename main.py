@@ -64,6 +64,7 @@ if __name__ == "__main__":
     time.sleep(2) # give it some time to setup the primary and secondary cameras 
 
     start_pos = StartPosition.LEFT
+    
     robot = Robot(vision=vision, start_pos = start_pos)
 
     simulation_time_s = 10*60

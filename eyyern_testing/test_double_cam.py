@@ -28,7 +28,7 @@ class Vision:
         # ------------------- SECONDARY  -------------------
         self.capWidth_secondary = 640
         self.capHeight_secondary = 480
-        self.camera_secondary = cv2.VideoCapture(1) 
+        self.camera_secondary = cv2.VideoCapture(2) 
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_secondary) #1280
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_secondary) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
@@ -119,7 +119,7 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.8*self.capWidth_secondary *self.capHeight_secondary)):
+                    if camNum == 2 and (pixels > (0.65*self.capWidth_secondary *self.capHeight_secondary)):
                         print("BALL CONFIRMED IN THE GRABBER")
 
             except Exception as e:

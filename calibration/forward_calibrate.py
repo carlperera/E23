@@ -23,6 +23,6 @@ if __name__ == "__main__":
         input(f"Current value: {dist}. Press Enter to continue...")
 
         # robot.move_test(distance=0.1, speed=1.0)
-        robot.forward_calibrate(distance=dist, speed=1.0)
+        robot.forward_calibrate(distance=dist, speed=0.5)
     
         print(f"(x,y) = ({round(robot.x,2), round(robot.y,2)})  --- angle = {round(robot.th,4)}")

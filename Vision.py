@@ -107,9 +107,11 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.8*self.capWidth_secondary *self.capHeight_secondary)):
+                    if camNum == 2 and (pixels > (0.6*self.capWidth_secondary *self.capHeight_secondary)):
                         print("BALL CONFIRMED IN THE GRABBER")
+                        vision_x = VISION_X.BALL_IN_GRABBER.value
                         vision_y = VISION_Y.BALL_IN_GRABBER.value
+                        
                         
 
             except Exception as e:
