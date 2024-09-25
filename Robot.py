@@ -179,11 +179,11 @@ class Robot:
     
     def get_rotating_direction(self):
         # check if rotating clockwise
-        if self.motor1_in1.value == 1 and self.motor1_in2.value == 0 and self.motor2_in1 == 0 and self.motor2_in2 == 1:
+        if self.motor1_in1.value == 1 and self.motor1_in2.value == 0 and self.motor2_in1.value == 0 and self.motor2_in2.value == 1:
             return RotateDirection.CLOCKWISE
         
         # check if rotating anticlockwise 
-        elif self.motor1_in1.value == 0 and self.motor1_in2.value == 1 and self.motor2_in1 == 1 and self.motor2_in2 == 0:
+        elif self.motor1_in1.value == 0 and self.motor1_in2.value == 1 and self.motor2_in1.value == 1 and self.motor2_in2.value == 0:
             return RotateDirection.ANTICLOCKWISE
         return None
     

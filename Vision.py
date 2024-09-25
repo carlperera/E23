@@ -111,6 +111,8 @@ class Vision:
                         print("BALL CONFIRMED IN THE GRABBER")
                         vision_x = VISION_X.BALL_IN_GRABBER.value
                         vision_y = VISION_Y.BALL_IN_GRABBER.value
+
+                        return (vision_x, vision_y)
                         
                         
 
