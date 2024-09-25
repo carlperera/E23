@@ -105,6 +105,12 @@ class Claw:
         sleep(1)
     
     def close(self):
-        self.setAngle(170,self.pwm1) # Make servo 1 go to 180 degrees
-        self.setAngle(0, self.pwm2) # Make servo 2 go back to starting pos
-        sleep(1)
+        angle1 = 0
+        angle2 = 175
+
+        while angle1 < 170 and angle2 > 0:
+            angle1+=1
+            angle2 -= 1
+            self.setAngle(angle1,self.pwm1) # Make servo 1 go to 180 degrees
+            self.setAngle(angle2, self.pwm2) # Make servo 2 go back to starting pos
+            sleep(0.0114)
