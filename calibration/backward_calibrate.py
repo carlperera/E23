@@ -6,10 +6,13 @@ from Vision import Vision
 
 from State import State, StartPosition
 
-START_POINT = 5 
-END_POINT = 80
-INCREMENTS = 5
-BACKWARD_CALIBRATION_INPUTS = list(range(START_POINT, END_POINT + 1, INCREMENTS))
+# THESE ARE IN CM
+START_POINT = 50
+END_POINT = 300
+INCREMENTS = 20
+
+# CONVERT TO METRES HERE
+BACKWARD_CALIBRATION_INPUTS = [i/100 for i in list(range(START_POINT, END_POINT + 1, INCREMENTS))]
 
 if __name__ == "__main__":
     vision = None
@@ -23,6 +26,3 @@ if __name__ == "__main__":
         robot.backward_calibrate(distance=dist, speed=1.0)
     
         print(f"(x,y) = ({round(robot.x,2), round(robot.y,2)})  --- angle = {round(robot.th,4)}")
-    
-
-   
