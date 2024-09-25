@@ -1308,11 +1308,10 @@ class Robot:
                 match vision_x:
                     case -1: # nothing detected, keep moving to centre
 
-
                         # check we've already reached the centre
                         distance_travelled =  self.get_dist_moved()
 
-                        if distance_travelled >= self.calibrated_centre_move: 
+                        if distance_travelled >= self.calibrated_centre_move:  # TODO: replace with odometry?
                             self.stop_forward()
                             self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
                             self.state = State.ROTATING_START_RIGHT_EXPLORE
@@ -1334,35 +1333,6 @@ class Robot:
                         self.stop_forward()
                         self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
-
-            # case State.MOVE_TO_CENTRE_BALL:
-            #     match vision_x:
-            #         case -1: # nothing detected, keep moving to centre
-            #             distance_travelled =  self.get_dist_moved()
-
-            #             if distance_travelled >= self.calibrated_centre_move: 
-            #                 self.stop_forward()
-            #                 self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
-            #                 self.state = State.ROTATING_START_RIGHT_EXPLORE
-                
-            #         case 2: # left 
-            #             # keep spinning     
-            #             self.stop_forward()
-            #             self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
-            #             self.state = State.ROTATE_LEFT_TARGET 
-            #         case 1:
-            #             self.stop_forward()
-            #             if vision_y == 1: # close 
-            #                 self.start_forward(Speeds.CLOSE_TO_TARGET.value)
-            #                 self.state = State.CLOSE_TO_TARGET
-            #             else:
-            #                 self.start_forward(Speeds.MOVING_TO_TARGET.value)
-            #                 self.state = State.MOVE_TO_TARGET
-            #         case 3: # to the right 
-            #             self.stop_forward()
-            #             self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
-            #             self.state = State.ROTATE_RIGHT_TARGET 
-
 
             case State.ROTATE_FACE_CENTRE_BOX:
                 rotating_direction = self.get_rotating_direction()
@@ -1388,7 +1358,35 @@ class Robot:
 
             case State.MOVE_TO_CENTRE_BOX:
                 # check odometry to see if moved to centre 
-                pass
+
+                match vision_x:
+                    case -5: # nothing detected, keep moving to centre
+
+                        # check we've already reached the centre
+                        distance_travelled =  self.get_dist_moved()
+
+                        if distance_travelled >= self.calibrated_centre_move:  # TODO: replace with odometry?
+                            self.stop_forward()
+                            self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
+                            self.state = State.ROTATING_START_RIGHT_EXPLORE
+                
+                    case -6: # left 
+                        # keep spinning     
+                        self.stop_forward()
+                        self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.state = State.ROTATE_LEFT_TARGET 
+                    case -7:
+                        self.stop_forward()
+                        if vision_y == 1: # close 
+                            self.start_forward(Speeds.CLOSE_TO_TARGET.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else:
+                            self.start_forward(Speeds.MOVING_TO_TARGET.value)
+                            self.state = State.MOVE_TO_TARGET
+                    case -8: # to the right 
+                        self.stop_forward()
+                        self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
+                        self.state = State.ROTATE_RIGHT_TARGET 
             
         
             case State.ROTATE_RIGHT_TARGET:
