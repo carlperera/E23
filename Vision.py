@@ -156,8 +156,8 @@ class Vision:
                     cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
         
         
-        vision_x = -1 
-        vision_y = -1
+        vision_x = VISION_X.LINE_DETECTED
+        vision_y = VISION_Y.LINE_DETECTED
 
         if ball_list:
             self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -170,20 +170,22 @@ class Vision:
                 right_band = self.capWidth_primary * 0.7
 
                 if self.max_ball.x < left_band:
-                    self.inCentre = 2  # Left third
+                    # Left third
+                    vision_x = VISION_X.BALL_LEFT
                 elif left_band <= self.max_ball.x <= right_band:
-                    self.inCentre = 1  # Middle third
+                    # Middle third
+                    vision_x = vision_x.BALL_CENTRE
                 else:
-                    self.inCentre = 3  # Right third
+                    # Right third
+                    vision_x = VISION_X.BALL_RIGHT
             
-                vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
                 top_band = self.capHeight_primary*0.7
                 if self.max_ball.y < top_band:
-                    vision_y = 0  # not close 
+                    vision_y = VISION_Y.NOT_CLOSE  # not close 
                 else:   
-                    vision_y = 1  # close 
+                    vision_y = VISION_Y.CLOSE  # close 
 
         # cv2.imshow("Masked frame", mask)
         # cv2.imshow("Webcam", frame)
@@ -197,10 +199,8 @@ class Vision:
             # no balls detected if ball outside of the lines
             if line_detection:
                 print("line detected!")
-                vision_x = -1
-                vision_y = -1
-
-
+                vision_x = VISION_X.LINE_DETECTED
+                vision_y = VISION_X.LINE_DETECTED
 
         return (vision_x, vision_y)
 

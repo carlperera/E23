@@ -21,7 +21,7 @@ class Vision:
         # ------------------- PRIMARY  -------------------
         self.capWidth_primary = 1280
         self.capHeight_primary = 960
-        self.camera_primary = cv2.VideoCapture(2) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        self.camera_primary = cv2.VideoCapture(1) # REMOVE cv2.CAP_DSHOW ON THE RPI
         self.camera_primary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_primary) #1280
         self.camera_primary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_primary) #550
 

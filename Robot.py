@@ -14,7 +14,6 @@ WHEEL_SEP = 238/1000    # previously 227/1000
 WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000 
 CPR = 48
 GEAR_RATIO = 74.38
-
 MOTOR2_SCALING = 0.75
 
 class Scaling(Enum):
@@ -1101,20 +1100,20 @@ class Robot:
             # -------------------------  START SEQUENCE  -------------------------
             case State.START_LEFT: # start on the bottom left side of the quadrant (facing 3 o'clock)
                 match vision_x:
-                    case -1: # no ball detected in frame 
+                    case VISION_X.LINE_DETECTED: # no ball detected in frame 
                         self.start_clockwise(speed=Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATING_START_LEFT_EXPLORE  # rotate on the spot (anticlock)
-                    case 2: #   # ball detected on left side of frame # TODO: this is a realistic state? 
+                    case VISION_X.BALL_LEFT: #   # ball detected on left side of frame # TODO: this is a realistic state? 
                         self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET
-                    case 1: # ball in frame in centre 
-                        if vision_y == 1: # close 
+                    case VISION_X.BALL_CENTRE: # ball in frame in centre 
+                        if vision_y == VISION_Y.CLOSE: # close 
                             self.start_forward(Speeds.CLOSE_TO_TARGET.value)
                             self.state = State.CLOSE_TO_TARGET # switch to secondary camera
                         else: # not close 
                             self.start_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
-                    case 3: # ball in frame to right side 
+                    case VISION_X.BALL_RIGHT: # ball in frame to right side 
                         self.start_clockwise(Speeds.ROTATING_EXPLORE.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
 
