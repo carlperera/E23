@@ -12,6 +12,7 @@ if __name__ == "__main__":
         while True: 
             claw.open()
             claw.close()
+            sleep(2)
 
         # #simulate claw USE PIN 13 FOR CLAW
         # servo.rotate_to_180()

@@ -41,14 +41,14 @@ class Vision:
         # ------------------- PRIMARY  -------------------
         self.capWidth_primary = 1280
         self.capHeight_primary = 960
-        self.camera_primary = cv2.VideoCapture(0) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        self.camera_primary = cv2.VideoCapture(2) # REMOVE cv2.CAP_DSHOW ON THE RPI
         self.camera_primary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_primary) #1280
         self.camera_primary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_primary) #550
 
         # ------------------- SECONDARY  -------------------
         self.capWidth_secondary = 640
         self.capHeight_secondary = 480
-        self.camera_secondary = cv2.VideoCapture(2) 
+        self.camera_secondary = cv2.VideoCapture(0) 
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_secondary) #1280
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_secondary) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
@@ -107,12 +107,14 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.6*self.capWidth_secondary *self.capHeight_secondary)):
+                    if camNum == 2 and (pixels > (0.7*self.capWidth_secondary *self.capHeight_secondary)):
                         print("BALL CONFIRMED IN THE GRABBER")
                         vision_x = VISION_X.BALL_IN_GRABBER.value
                         vision_y = VISION_Y.BALL_IN_GRABBER.value
 
                         return (vision_x, vision_y)
+                    elif camNum == 2:
+                        print(f"Proportion of frame covered: {pixels / (self.capWidth_secondary *self.capHeight_secondary) }")
                         
                         
 

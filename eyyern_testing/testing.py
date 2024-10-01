@@ -28,7 +28,8 @@ while True: # for each frame from camera
         # if curr_state == "2":
             # ret, frame = vision.camera_secondary.read()
         # else:
-        ret, frame = vision.camera_secondary.read()
+        ret, frame = vision.camera_primary.read()
+        
 
         vision_x, vision_y = vision.track_ball(frame, 2)
 
@@ -43,6 +44,7 @@ while True: # for each frame from camera
         # cv2.imshow("Webcam", frame)
         # cv2.imshow("Banchod detect", banchod_out)
         cv2.imshow("Cam", frame)
+        
         
     
         # wait for the next frame - 30 FPS 

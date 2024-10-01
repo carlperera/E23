@@ -21,14 +21,14 @@ class Vision:
         # ------------------- PRIMARY  -------------------
         self.capWidth_primary = 1280
         self.capHeight_primary = 960
-        self.camera_primary = cv2.VideoCapture(0) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        self.camera_primary = cv2.VideoCapture(2) # REMOVE cv2.CAP_DSHOW ON THE RPI
         self.camera_primary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_primary) #1280
         self.camera_primary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_primary) #550
 
         # ------------------- SECONDARY  -------------------
         self.capWidth_secondary = 640
         self.capHeight_secondary = 480
-        self.camera_secondary = cv2.VideoCapture(2) 
+        self.camera_secondary = cv2.VideoCapture(0) 
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_secondary) #1280
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_secondary) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
@@ -45,6 +45,7 @@ class Vision:
         self.max_ball = None 
         self.averaged_out_bounds = None
         self.inCentre = 0 
+        self.grabbed_count = 0
 
     def banchod_detect(self, frame):
         self.windowHeight = frame.shape[0]
@@ -119,8 +120,9 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.65*self.capWidth_secondary *self.capHeight_secondary)):
-                        print("BALL CONFIRMED IN THE GRABBER")
+                    if camNum == 2 and (pixels > (0.80*self.capWidth_secondary *self.capHeight_secondary)):
+                        self.grabbed_count+=1
+                        print(f"BALL CONFIRMED IN THE GRABBER {self.grabbed_count}")
 
             except Exception as e:
                 print(e)
