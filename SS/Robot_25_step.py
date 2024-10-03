@@ -1476,7 +1476,7 @@ class Robot:
                 # check odometry to see if moved to centre 
 
                 match vision_x:
-                    case VISION_X.NO_BOX_DETECTED: # nothing detected, keep moving to centre
+                    case VISION_X.no_box_detected: # nothing detected, keep moving to centre
 
                         # check we've already reached the centre
                         distance_travelled =  self.get_dist_moved()
@@ -1486,13 +1486,13 @@ class Robot:
                             self.start_anticlockwise(speed=Speeds.ROTATING_EXPLORE.value)
                             self.state = State.ROTATE_EXPLORE_BOX_PART_1
 
-                    case VISION_X.BOX_LEFT: # left 
+                    case VISION_X.box_left: # left 
                         # keep spinning     
                         self.stop_forward()
                         self.start_anticlockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_BOX 
 
-                    case VISION_X.BOX_CENTRE:
+                    case VISION_X.box_centre:
                         self.stop_forward() 
                         # TODO: differentiate when the box is close and not close using vision_y
                         if vision_y == 1: # close to box 
@@ -1501,26 +1501,26 @@ class Robot:
                         else:
                             self.start_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_TARGET
-                    case VISION_X.BALL_RIGHT: # to the right 
+                    case VISION_X.ball_right: # to the right 
                         self.stop_forward()
                         self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
             # TODO: replace with rotate 360 once motor step count issue fixed 
             case State.ROTATE_EXPLORE_BOX_PART_1:
                 match vision_x:
-                        case VISION_X.LINE_DETECTED: # nothing detected
+                        case VISION_X.line_detected: # nothing detected
                             if self.check_rotated_by_angle(180):  # check if already spun 360 
                                 self.stop_anticlockwise()
 
                                 # second part of the full 360
                                 self.start_anticlockwise()
                                 self.state = State.ROTATE_EXPLORE_BOX_PART_2
-                        case VISION_X.BOX_LEFT: # left (keep spinning anticlockwise)
+                        case VISION_X.box_left: # left (keep spinning anticlockwise)
                             self.stop_anticlockwise()
                             # start rotating again
                             self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                             self.state = State.ROTATE_LEFT_BOX 
-                        case VISION_X.BOX_CENTRE:
+                        case VISION_X.box_centre:
                             self.stop_anticlockwise() # stop rotating
                             
                             if vision_y == 1: # close 
@@ -1529,14 +1529,14 @@ class Robot:
                             else: # not close 
                                 self.start_forward(Speeds.MOVING_TO_TARGET.value)
                                 self.state = State.MOVE_TO_BOX
-                        case VISION_X.BOX_RIGHT: # to the right 
+                        case VISION_X.box_right: # to the right 
                             self.stop_anticlockwise()
                             self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                             self.state = State.ROTATE_RIGHT_BOX 
 
             case State.ROTATE_EXPLORE_BOX_PART_2:
                 match vision_x:
-                    case VISION_X.LINE_DETECTED: # nothing detected
+                    case VISION_X.line_detected: # nothing detected
                         # check if already spun 360 
                         if self.check_rotated_by_angle(180):
                             self.stop_anticlockwise()
@@ -1554,12 +1554,12 @@ class Robot:
                                 self.angle_to_rotate_to = angle_diff
                                 self.state = State.ROTATE_FACE_CENTRE_BOX
 
-                    case VISION_X.BOX_LEFT: # left 
+                    case VISION_X.box_left: # left 
                         # keep spinning 
                         self.stop_anticlockwise()
                         self.start_anticlockwise(speed=Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_LEFT_TARGET 
-                    case VISION_X.BOX_CENTRE:
+                    case VISION_X.box_centre:
                         self.stop_anticlockwise() # stop rotating
 
                         if vision_y == 1: # close 
@@ -1568,7 +1568,7 @@ class Robot:
                         else:
                             self.move_forward(Speeds.MOVING_TO_TARGET.value)
                             self.state = State.MOVE_TO_BOX
-                    case VISION_X.BOX_RIGHT: # to the right 
+                    case VISION_X.box_right: # to the right 
                         self.stop_anticlockwise()
                         self.start_clockwise(Speeds.ROTATE_TO_TARGET.value)
                         self.state = State.ROTATE_RIGHT_TARGET 

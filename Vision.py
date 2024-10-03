@@ -3,23 +3,23 @@ import numpy as np
 from enum import Enum, auto
 
 class VISION_X(Enum): # TODO: change these to use auto
-    LINE_DETECTED = -1
-    BALL_CENTRE = 1
-    BALL_LEFT = 2
-    BALL_RIGHT = 3
-    BALL_IN_GRABBER = 4
+    line_detected = -1
+    ball_centre = 1
+    ball_left = 2
+    ball_right = 3
+    ball_in_grabber = 4
 
-    BOX_RIGHT = 5
-    BOX_LEFT = 6
-    BOX_CENTRE = 7
+    box_right = 5
+    box_left = 6
+    box_centre = 7
 
-    NO_BOX_DETECTED = 8 
+    no_box_detected = 8 
 
 class VISION_Y(Enum):
-    LINE_DETECTED = - 1
-    NOT_CLOSE = 0
-    CLOSE = 1
-    BALL_IN_GRABBER = 2
+    line_detected = - 1
+    not_close = 0
+    close = 1
+    ball_in_grabber = 2
 
 class Vision:
     class Tennis_ball:
@@ -109,8 +109,8 @@ class Vision:
                     
                     if camNum == 2 and (pixels > (0.7*self.capWidth_secondary *self.capHeight_secondary)):
                         print("BALL CONFIRMED IN THE GRABBER")
-                        vision_x = VISION_X.BALL_IN_GRABBER.value
-                        vision_y = VISION_Y.BALL_IN_GRABBER.value
+                        vision_x = VISION_X.ball_in_grabber.value
+                        vision_y = VISION_Y.ball_in_grabber.value
 
                         return (vision_x, vision_y)
                     elif camNum == 2:
@@ -156,8 +156,8 @@ class Vision:
                     cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
         
         
-        vision_x = VISION_X.LINE_DETECTED
-        vision_y = VISION_Y.LINE_DETECTED
+        vision_x = VISION_X.line_detected
+        vision_y = VISION_Y.line_detected
 
         if ball_list:
             self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -171,21 +171,21 @@ class Vision:
 
                 if self.max_ball.x < left_band:
                     # Left third
-                    vision_x = VISION_X.BALL_LEFT
+                    vision_x = VISION_X.ball_left
                 elif left_band <= self.max_ball.x <= right_band:
                     # Middle third
-                    vision_x = vision_x.BALL_CENTRE
+                    vision_x = vision_x.ball_centre
                 else:
                     # Right third
-                    vision_x = VISION_X.BALL_RIGHT
+                    vision_x = VISION_X.ball_right
             
                 # print(f"inCentre: {inCentre}")
 
                 top_band = self.capHeight_primary*0.7
                 if self.max_ball.y < top_band:
-                    vision_y = VISION_Y.NOT_CLOSE  # not close 
+                    vision_y = VISION_Y.not_close  # not close 
                 else:   
-                    vision_y = VISION_Y.CLOSE  # close 
+                    vision_y = VISION_Y.close  # close 
 
         # cv2.imshow("Masked frame", mask)
         # cv2.imshow("Webcam", frame)
@@ -199,8 +199,8 @@ class Vision:
             # no balls detected if ball outside of the lines
             if line_detection:
                 print("line detected!")
-                vision_x = VISION_X.LINE_DETECTED
-                vision_y = VISION_X.LINE_DETECTED
+                vision_x = VISION_X.line_detected
+                vision_y = VISION_X.line_detected
 
         return (vision_x, vision_y)
 
@@ -314,6 +314,38 @@ class Vision:
         #     lines_edges = cv2.addWeighted(mask, 0.8, line_image, 1, 0)
         # # cv2.imshow("Line Detection", line_image)
         # return lines_edges
+
+    def box_detect(self, frame):
+        self.windowHeight = frame.shape[0]
+        self.windowWidth = frame.shape[1]
+
+        # Convert frame to HSV
+        frame_to_thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Define HSV range for filtering
+        v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [14, 60, 90, 20, 255, 200]
+        thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max))
+
+        # Apply morphological operations
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        # Find contours
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        min_contour_area = 2000  # Adjust this value as needed
+
+        # Draw bounding boxes around identified rectangles
+        for contour in contours:
+            if cv2.contourArea(contour) > min_contour_area:
+                # Get the bounding rectangle coordinates
+                x, y, w, h = cv2.boundingRect(contour)
+                # Draw the rectangle on the original frame
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green color with thickness of 2
+
+
+        return mask
     
 
     def close(self):

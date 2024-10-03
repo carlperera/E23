@@ -61,9 +61,9 @@ class State(Enum):
     ROTATE_EXPLORE_BOX_PART_2 = auto()
 
     FLAP_SEQUENCE = auto()  # open the flap to let balls out into the collection box, then close the flap 
-
    
 
+SECONDARY_CAM_STATES = [State.CLOSE_TO_TARGET, State.CLOSE_TO_BOX, State.ROTATE_LEFT_SECONDARY, State.ROTATE_RIGHT_SECONDARY, State.MOVE_TO_TARGET_SECONDARY, State.ROTATE_EXPLORE_FULL_SECONDARY, State.SECONDARY]
 
 class StartPosition(Enum):
     """
