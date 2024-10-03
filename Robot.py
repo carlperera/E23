@@ -59,9 +59,9 @@ class PINSMOTOR(Enum):
 class MOVEMENT_DIRECTION(Enum):
     not_rotating = auto()
     anticlockwise = auto()
-    clockwise = 1 
-    forward =
-    backward =  
+    clockwise = auto()
+    forward = auto()
+    backward =  auto()
 
 
 class SERVO_PINS(Enum):
@@ -142,12 +142,20 @@ class Robot:
         # ----------------  BALLS - TRAY ----------------
         self.tray_ball_threshold = Constants.tray_ball_threshold # number of balls in robot tray at which point robot goes to collection box
 
+        # ---------------- DEPOSIT BALLS 
+
+        self.calibrated_reverse_dist = 0.1
+
         self.balls_in_tray = 0
 
         # ----------------  ----------------
+        self.claw = Claw()
         # self.flap = Flap()
-        # self.claw = Claw()
-        
+       
+    # ------------------------------- GET METHODS --------------------
+
+
+    # ------------------------------ BASIC OPERATIONS -------------------
   
     def shutdown(self):
         self.vision.close()
@@ -228,6 +236,9 @@ class Robot:
         wheel_rotatations_per_step = 1 / (CPR*GEAR_RATIO)
         return 2*math.pi*self.wheel_radius*wheel_rotatations_per_step
 
+    
+    def ball_threshold_reached(self):
+        return self.balls_in_tray >= self.ball_threshold_reached
 
     def turn_off_all(self):
         self.motor1_pwm.off()
@@ -1099,6 +1110,13 @@ class Robot:
     
 
     def handle_state(self, frame):
+        """
+        There are two parts:
+
+        1. ball detection + go to it + retrieval 
+        2. box detection + go to it + disposal 
+
+        """
         # TODO: add all of the secondary states here 
 
         # TODO: changing the camNums is not just related to a single state anymore 
@@ -1107,15 +1125,20 @@ class Robot:
         else:
             camNum = 1
         
-        # track ball and line detect  
-        vision_x, vision_y = self.vision.track_ball(frame, camNum)
-        
-        print(f"vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
+        # ball state - detect a ball
+        ball_NOT_box_state = self.state.is_ball_state
+        if ball_NOT_box_state:
+            vision_x, vision_y = self.vision.track_ball(frame, camNum)
+        # box states - detect a box
+        else:   
+            vision_x, vision_y = self.vision.box_detect(frame)
+
+        print(f"{'BALL STATE' if ball_NOT_box_state else 'BOX STATE'} --> vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
 
         old_state = self.state
 
         print(f"(x, y, th) = ({self.x},  {self.y},  {self.th})")
-
+        
         match self.state:
             # -------------------------  START SEQUENCE  -------------------------
             case State.START_LEFT: # start on the bottom left side of the quadrant (facing 3 o'clock)
@@ -1201,7 +1224,7 @@ class Robot:
                         self.stop_anticlockwise()
                         self.start_clockwise(SPEED.rotating_explore.value)
                         self.state = State.ROTATE_RIGHT_TARGET
-                    case VISION_X.line_detected: # no ball detected in frame 
+                    case _: # no ball detected in frame 
                         # check if rotated to 90 degrees already 
                         if self.check_rotated_90_at_start():
                             self.stop_anticlockwise()
@@ -1236,7 +1259,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_TARGET 
                     case VISION_X.ball_centre:
                         self.stop_forward()
-                        if vision_y == 1: # close 
+                        if vision_y == VISION_Y.close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else:
@@ -1257,38 +1280,57 @@ class Robot:
 
 
             # -------------------------  EXPLORE BALL  -------------------------
-            # rotate full 360 (Twice)
+            # rotate full 360 (Twice) # TODO: could potentially replace the two parts into a full 360 rotation in one go
             case State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1:
                 match vision_x:
-                        case -1: # nothing detected
+                        case VISION_X.ball_left: # left (keep spinning anticlockwise)
+                            self.stop_anticlockwise()
+                            # start rotating again
+                            self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
+                            self.state = State.ROTATE_LEFT_TARGET 
+                        case VISION_X.ball_centre:
+                            self.stop_anticlockwise() # stop rotating
+                            
+                            if vision_y == VISION_Y.close: # close 
+                                self.start_forward(SPEED.close_to_target.value)
+                                self.state = State.CLOSE_TO_TARGET
+                            else: # not close 
+                                self.start_forward(SPEED.moving_to_target.value)
+                                self.state = State.MOVE_TO_TARGET
+                        case VISION_X.ball_right: # to the right 
+                            self.stop_anticlockwise()
+                            self.start_clockwise(SPEED.rotate_to_target.value)
+                            self.state = State.ROTATE_RIGHT_TARGET 
+                        case _: # nothing detected
                             if self.check_rotated_by_angle(180):  # check if already spun 360 
                                 self.stop_anticlockwise()
 
                                 # second part of the full 360
                                 self.start_anticlockwise()
                                 self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_2
-                        case 2: # left (keep spinning anticlockwise)
-                            self.stop_anticlockwise()
-                            # start rotating again
-                            self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
-                            self.state = State.ROTATE_LEFT_TARGET 
-                        case 1:
-                            self.stop_anticlockwise() # stop rotating
-                            
-                            if vision_y == 1: # close 
-                                self.start_forward(SPEED.close_to_target.value)
-                                self.state = State.CLOSE_TO_TARGET
-                            else: # not close 
-                                self.start_forward(SPEED.moving_to_target.value)
-                                self.state = State.MOVE_TO_TARGET
-                        case 3: # to the right 
-                            self.stop_anticlockwise()
-                            self.start_clockwise(SPEED.rotate_to_target.value)
-                            self.state = State.ROTATE_RIGHT_TARGET 
 
             case State.ROTATE_EXPLORE_FULL_PRIMARY_PART_2:
                 match vision_x:
-                    case -1: # nothing detected
+
+                    case VISION_X.ball_left: # left 
+                        # keep spinning 
+                        self.stop_anticlockwise()
+                        self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_TARGET 
+                    case VISION_X.ball_centre:
+                        self.stop_anticlockwise() # stop rotating
+
+                        if vision_y == VISION_Y.close: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else:
+                            self.move_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_TARGET
+                    case VISION_X.ball_right: # to the right 
+                        self.stop_anticlockwise()
+                        self.start_clockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_RIGHT_TARGET 
+                    case _: # nothing detected
                         # check if already spun 360 
                         if self.check_rotated_by_angle(180):
                             self.stop_anticlockwise()
@@ -1306,30 +1348,50 @@ class Robot:
                                 self.angle_to_rotate_to = angle_diff
                                 self.state = State.ROTATE_FACE_CENTRE_BALL
 
-                    case 2: # left 
-                        # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_LEFT_TARGET 
-                    case 1:
-                        self.stop_anticlockwise() # stop rotating
-
-                        if vision_y == 1: # close 
-                            self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else:
-                            self.move_forward(SPEED.moving_to_target.value)
-                            self.state = State.MOVE_TO_TARGET
-                    case 3: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_RIGHT_TARGET 
-            
             case State.ROTATE_FACE_CENTRE_BALL:
                 rotating_direction = self.get_rotating_direction()
             
                 match vision_x:
-                    case -1: # no ball detected 
+        
+                    case VISION_X.ball_left:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+                                self.start_anticlockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_LEFT_TARGET
+                                
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                                self.start_anticlockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_LEFT_TARGET
+                        
+                    case VISION_X.ball_centre:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                    
+                        if vision_y == VISION_Y.close: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else: #not close
+                            self.move_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_TARGET
+
+                    case VISION_X.ball_right:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+                                self.start_clockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_RIGHT_TARGET
+                                
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                                self.start_clockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_RIGHT_TARGET
+                    case _: # no ball detected 
                         angle_to_rotate_to = self.angle_to_rotate_to
                         curr_orientation = self.update_and_get_orientation()
 
@@ -1349,78 +1411,36 @@ class Robot:
                                     self.state = State.MOVE_TO_CENTRE_BALL
                                 else:
                                     pass # keep rotating clockwise
-                    case 2:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-                                self.start_anticlockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_LEFT_TARGET
-                                
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                                self.start_anticlockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_LEFT_TARGET
-                        
-                    case 1:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                    
-                        if vision_y == 1: # close 
-                            self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else: #not close
-                            self.move_forward(SPEED.moving_to_target.value)
-                            self.state = State.MOVE_TO_TARGET
-
-                    case 3:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-                                self.start_clockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_RIGHT_TARGET
-                                
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                                self.start_clockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_RIGHT_TARGET
 
             # -------------------------  GO TO TARGET  ------------------------- 
             case State.ROTATE_RIGHT_TARGET:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_clockwise()
-                        self.start_anticlockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2: 
+                    case VISION_X.ball_left: 
                         self.stop_clockwise()
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_TARGET
-                    case 1: # ball in centre of frame so start moving forward
+                    case VISION_X.ball_centre: # ball in centre of frame so start moving forward
                         self.stop_anticlockwise()
-                        if vision_y == 1: # close 
+                        if vision_y == VISION_Y.close: # close 
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: # not close 
                             self.move_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_TARGET
-                    case 3:  # ball to right of the frame, keep rotating clockwise     
+                    case VISION_X.ball_right:  # ball to right of the frame, keep rotating clockwise     
                         pass
+                    case _: # the ball has left the frame 
+                        self.stop_clockwise()
+                        self.start_anticlockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
             case State.ROTATE_LEFT_TARGET:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2:  # ball still to left, keep rotating anticlock
+                    case VISION_X.ball_left:  # ball still to left, keep rotating anticlock
                         print("in rotate left, keep in rotate left")
                         pass 
-                    case 1: # ball in centre of frame so start moving forward
+                    case VISION_X.ball_centre: # ball in centre of frame so start moving forward
                         
-                        if vision_y == 1: # close 
+                        if vision_y == VISION_Y.close: # close 
                             self.stop_anticlockwise()
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
@@ -1428,41 +1448,60 @@ class Robot:
                             self.stop_anticlockwise()
                             self.move_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_TARGET
-                    case 3:  # ball now to right of the frame, rotate to right  
+                    case VISION_X.ball_right:  # ball now to right of the frame, rotate to right  
                         self.stop_anticlockwise()
                         self.start_clockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_TARGET
+                    case _: # the ball has left the frame 
+                        self.stop_anticlockwise()
+                        self.start_anticlockwise(SPEED.rotating_explore.value)
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
 
             case State.MOVE_TO_TARGET:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_forward()
-                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2:  # ball to the left so so readjust 
+                    case VISION_X.ball_left:  # ball to the left so so readjust 
                         self.stop_forward()
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_TARGET
-                    case 1: # ball in centre of frame
-                        if vision_y == 1: # close 
+                    case VISION_X.ball_centre: # ball in centre of frame
+                        if vision_y == VISION_Y.close: # close 
                             self.stop_forward() #stop moving first
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: # not close 
                             self.start_forward(SPEED.close_to_target.value)
-                    case 3:  # ball to right of the frame, stop moving to readjust    
+                    case VISION_X.ball_right:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
                         self.start_clockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_TARGET
+                    case _: # the ball has left the frame 
+                        self.stop_forward()
+                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+
+            # TODO: FINISH from here onwards 
             case State.CLOSE_TO_TARGET:
                 print("IN CLOSE TO TARGET ------------------")
-                if vision_x == 4 and vision_y == 2:
-                    self.stop_forward()
-                    print("GRABBED ball!")
-                    self.start_backward(speed=SPEED.retreat_back.value)
-                    self.state = State.START_RETURN
-                else:
-                    pass
+                match vision_x:
+                    case VISION_X.ball_in_grabber:
+                        if vision_y == VISION_Y.ball_in_grabber:
+                            self.stop_forward()
+                            print("GRABBED ball!")
+                            
+                            # PICK UP SEQUENCE FOR BALL
+                            self.claw.collect_ball()
+                            self.balls_in_tray += 1
+        
+                            if self.ball_threshold_reached(): # we have to go to the box now
+                                self.start_anticlockwise(speed=SPEED.rotating_explore)
+                                self.state = State.ROTATE_EXPLORE_BOX_PART_1
+                            else:  # find another ball
+                                # switch to trying another ball
+                                self.start_anticlockwise(speed=SPEED.rotating_explore)
+                                self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
+        
+                    case _:
+                        pass
 
             # -------------------------  FIND BOX -------------------------
             case State.ROTATE_FACE_CENTRE_BOX:
@@ -1489,18 +1528,7 @@ class Robot:
         
             case State.MOVE_TO_CENTRE_BOX:
                 # check odometry to see if moved to centre 
-
                 match vision_x:
-                    case VISION_X.no_box_detected: # nothing detected, keep moving to centre
-
-                        # check we've already reached the centre
-                        distance_travelled =  self.get_dist_moved()
-
-                        if distance_travelled >= self.calibrated_centre_move:  # TODO: replace with odometry?
-                            self.stop_forward()
-                            self.start_anticlockwise(speed=SPEED.rotating_explore.value)
-                            self.state = State.ROTATE_EXPLORE_BOX_PART_1
-
                     case VISION_X.box_left: # left 
                         # keep spinning     
                         self.stop_forward()
@@ -1510,7 +1538,7 @@ class Robot:
                     case VISION_X.box_centre:
                         self.stop_forward() 
                         # TODO: differentiate when the box is close and not close using vision_y
-                        if vision_y == 1: # close to box 
+                        if vision_y == VISION_Y.close_to_box: # close to box 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else:
@@ -1520,38 +1548,65 @@ class Robot:
                         self.stop_forward()
                         self.start_clockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_TARGET 
+                    case _: # nothing detected, keep moving to centre
+                        # check we've already reached the centre
+                        distance_travelled =  self.get_dist_moved()
+
+                        if distance_travelled >= self.calibrated_centre_move:  # TODO: replace with odometry?
+                            self.stop_forward()
+                            self.start_anticlockwise(speed=SPEED.rotating_explore.value)
+                            self.state = State.ROTATE_EXPLORE_BOX_PART_1
             # TODO: replace with rotate 360 once motor step count issue fixed 
             case State.ROTATE_EXPLORE_BOX_PART_1:
                 match vision_x:
-                        case VISION_X.line_detected: # nothing detected
-                            if self.check_rotated_by_angle(180):  # check if already spun 360 
-                                self.stop_anticlockwise()
+                    case VISION_X.box_left: # left (keep spinning anticlockwise)
+                        self.stop_anticlockwise()
+                        # start rotating again
+                        self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_BOX 
+                    case VISION_X.box_centre:
+                        self.stop_anticlockwise() # stop rotating
+                        
+                        if vision_y == VISION_Y.close_to_box: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_BOX
+                        else: # not close 
+                            self.start_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_BOX
+                    case VISION_X.box_right: # to the right 
+                        self.stop_anticlockwise()
+                        self.start_clockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_RIGHT_BOX 
+                    case _: # nothing detected
+                        if self.check_rotated_by_angle(180):  # check if already spun 360 
+                            self.stop_anticlockwise()
 
-                                # second part of the full 360
-                                self.start_anticlockwise()
-                                self.state = State.ROTATE_EXPLORE_BOX_PART_2
-                        case VISION_X.box_left: # left (keep spinning anticlockwise)
-                            self.stop_anticlockwise()
-                            # start rotating again
-                            self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
-                            self.state = State.ROTATE_LEFT_BOX 
-                        case VISION_X.box_centre:
-                            self.stop_anticlockwise() # stop rotating
-                            
-                            if vision_y == 1: # close 
-                                self.start_forward(SPEED.close_to_target.value)
-                                self.state = State.CLOSE_TO_BOX
-                            else: # not close 
-                                self.start_forward(SPEED.moving_to_target.value)
-                                self.state = State.MOVE_TO_BOX
-                        case VISION_X.box_right: # to the right 
-                            self.stop_anticlockwise()
-                            self.start_clockwise(SPEED.rotate_to_target.value)
-                            self.state = State.ROTATE_RIGHT_BOX 
+                            # second part of the full 360
+                            self.start_anticlockwise()
+                            self.state = State.ROTATE_EXPLORE_BOX_PART_2
 
             case State.ROTATE_EXPLORE_BOX_PART_2:
                 match vision_x:
-                    case VISION_X.line_detected: # nothing detected
+
+                    case VISION_X.box_left: # left 
+                        # keep spinning 
+                        self.stop_anticlockwise()
+                        self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_TARGET 
+                    case VISION_X.box_centre:
+                        self.stop_anticlockwise() # stop rotating
+
+                        if vision_y == VISION_Y.close_to_box: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_BOX
+                        else:
+                            self.move_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_BOX
+                    case VISION_X.box_right: # to the right 
+                        self.stop_anticlockwise()
+                        self.start_clockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_RIGHT_TARGET 
+                    case _: # nothing detected
                         # check if already spun 360 
                         if self.check_rotated_by_angle(180):
                             self.stop_anticlockwise()
@@ -1562,37 +1617,56 @@ class Robot:
                             if angle_diff > 180: # turn anticlockwise 
                                 self.start_anticlockwise(SPEED.return_rotate.value)
                                 self.angle_to_rotate_to = 360 - angle_diff
-                                self.state= State.ROTATE_FACE_CENTRE_BOX
+                                self.state = State.ROTATE_FACE_CENTRE_BOX
 
                             else: # turn clockwise 
                                 self.start_clockwise(SPEED.return_rotate.value)
                                 self.angle_to_rotate_to = angle_diff
                                 self.state = State.ROTATE_FACE_CENTRE_BOX
 
-                    case VISION_X.box_left: # left 
-                        # keep spinning 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_LEFT_TARGET 
-                    case VISION_X.box_centre:
-                        self.stop_anticlockwise() # stop rotating
-
-                        if vision_y == 1: # close 
-                            self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_BOX
-                        else:
-                            self.move_forward(SPEED.moving_to_target.value)
-                            self.state = State.MOVE_TO_BOX
-                    case VISION_X.box_right: # to the right 
-                        self.stop_anticlockwise()
-                        self.start_clockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_RIGHT_TARGET 
-
             case State.ROTATE_FACE_CENTRE_BOX:
                 rotating_direction = self.get_rotating_direction()
             
                 match vision_x:
-                    case -1: # no ball detected 
+                    case VISION_X.box_left:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+                                self.start_anticlockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_LEFT_TARGET
+                                
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                                self.start_anticlockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_LEFT_TARGET
+                        
+                    case VISION_X.box_centre:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                    
+                        if vision_y == VISION_Y.close_to_box: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_TARGET
+                        else: #not close
+                            self.move_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_TARGET
+
+                    case VISION_X.box_right:
+                        match rotating_direction:
+                            case MOVEMENT_DIRECTION.anticlockwise:
+                                self.stop_anticlockwise()
+                                self.start_clockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_RIGHT_TARGET
+                                
+                            case MOVEMENT_DIRECTION.clockwise:
+                                self.stop_clockwise()
+                                self.start_clockwise(SPEED.rotate_to_target.value)
+                                self.state = State.ROTATE_RIGHT_TARGET
+                    case _: # no box detected
                         angle_to_rotate_to = self.angle_to_rotate_to
                         curr_orientation = self.update_and_get_orientation()
 
@@ -1612,48 +1686,27 @@ class Robot:
                                     self.state = State.MOVE_TO_CENTRE_BALL
                                 else:
                                     pass # keep rotating clockwise
-                    case 2:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-                                self.start_anticlockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_LEFT_TARGET
-                                
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                                self.start_anticlockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_LEFT_TARGET
-                        
-                    case 1:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                    
-                        if vision_y == 1: # close 
-                            self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_TARGET
-                        else: #not close
-                            self.move_forward(SPEED.moving_to_target.value)
-                            self.state = State.MOVE_TO_TARGET
-
-                    case 3:
-                        match rotating_direction:
-                            case MOVEMENT_DIRECTION.anticlockwise:
-                                self.stop_anticlockwise()
-                                self.start_clockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_RIGHT_TARGET
-                                
-                            case MOVEMENT_DIRECTION.clockwise:
-                                self.stop_clockwise()
-                                self.start_clockwise(SPEED.rotate_to_target.value)
-                                self.state = State.ROTATE_RIGHT_TARGET
 
             case State.MOVE_TO_CENTRE_BOX:
                 match vision_x:
-                    case -1: # nothing detected, keep moving to centre
+                    case VISION_X.box_left: # left 
+                        # keep spinning     
+                        self.stop_forward()
+                        self.start_anticlockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_BOX 
+                    case VISION_X.box_centre:
+                        self.stop_forward()
+                        if vision_y == VISION_Y.close_to_box: # close 
+                            self.start_forward(SPEED.close_to_target.value)
+                            self.state = State.CLOSE_TO_BOX
+                        else:
+                            self.start_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_BOX
+                    case VISION_X.box_right: # to the right 
+                        self.stop_forward()
+                        self.start_clockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_RIGHT_BOX 
+                    case __: # nothing detected, keep moving to centre
                         # check we've already reached the centre
                         distance_travelled =  self.get_dist_moved()
 
@@ -1662,79 +1715,58 @@ class Robot:
                             self.start_anticlockwise(speed=SPEED.rotating_explore.value)
                             self.state = State.ROTATE_EXPLORE_BOX_PART_1
                 
-                    case 2: # left 
-                        # keep spinning     
-                        self.stop_forward()
-                        self.start_anticlockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_LEFT_BOX 
-                    case 1:
-                        self.stop_forward()
-                        if vision_y == 1: # close 
-                            self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_BOX
-                        else:
-                            self.start_forward(SPEED.moving_to_target.value)
-                            self.state = State.MOVE_TO_BOX
-                    case 3: # to the right 
-                        self.stop_forward()
-                        self.start_clockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_RIGHT_BOX 
 
             # -------------------------  LOCKED ONTO BOX -------------------------
             case State.ROTATE_LEFT_BOX:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_anticlockwise()
-                        self.start_anticlockwise(SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2:  # ball still to left, keep rotating anticlock
+                    case VISION_X.box_left:  # ball still to left, keep rotating anticlock
                         print("in rotate left, keep in rotate left")
                         pass 
-                    case 1: # ball in centre of frame so start moving forward
+                    case VISION_X.box_centre: # ball in centre of frame so start moving forward
                         self.stop_anticlockwise()
-                        if vision_y == 1: # close 
+                        if vision_y == VISION_Y.close_to_box: # close 
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
                             self.move_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_BOX
-                    case 3:  # ball now to right of the frame, rotate to right  
+                    case VISION_X.box_right:  # ball now to right of the frame, rotate to right  
                         self.stop_anticlockwise()
                         self.start_clockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_BOX 
+                    case _: # the ball has left the frame 
+                        self.stop_anticlockwise()
+                        self.start_anticlockwise(SPEED.rotating_explore.value)
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
             case State.MOVE_TO_BOX:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_forward()
-                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2:  # ball to the left so so readjust 
+                    case VISION_X.box_left:  # ball to the left so so readjust 
                         self.stop_forward()
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX
-                    case 1: # ball in centre of frame
-                        if vision_y == 1: # close 
+                    case VISION_X.box_centre: # ball in centre of frame
+                        if vision_y == VISION_Y.close_to_box: # close 
                             self.stop_forward() #stop moving first
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
                             self.start_forward(SPEED.close_to_target.value)
-                    case 3:  # ball to right of the frame, stop moving to readjust    
+                    case VISION_X.box_right:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
                         self.start_clockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_BOX
+                    case _: # the ball has left the frame 
+                        self.stop_forward()
+                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                        self.state = State.ROTATING_START_RIGHT_EXPLORE
 
             case State.ROTATE_RIGHT_BOX:
                 match vision_x:
-                    case -1: # the ball has left the frame 
-                        self.stop_clockwise()
-                        self.start_anticlockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
-                    case 2: 
+                    case VISION_X.box_left: 
                         self.stop_clockwise()
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX
-                    case 1: # ball in centre of frame so start moving forward
+                    case VISION_X.box_centre: # ball in centre of frame so start moving forward
                         self.stop_anticlockwise()
                         if vision_y == 1: # close 
                             self.move_forward(SPEED.close_to_target.value)
@@ -1742,8 +1774,12 @@ class Robot:
                         else: # not close 
                             self.move_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_BOX
-                    case 3:  # ball to right of the frame, keep rotating clockwise     
+                    case VISION_X.box_right:  # ball to right of the frame, keep rotating clockwise     
                         pass
+                    case _: # the ball has left the frame 
+                            self.stop_clockwise()
+                            self.start_anticlockwise(SPEED.rotate_to_target.value)
+                            self.state = State.ROTATING_START_RIGHT_EXPLORE
             
             case State.CLOSE_TO_BOX:
                 calc_dist_moved = self.get_dist_moved()
@@ -1755,24 +1791,41 @@ class Robot:
                 dist_to_move = 55/100 
                 print(f"dist_to_move = {dist_to_move}")
 
-                if vision_x == 4 and vision_y == 4:
-                    self.stop_forward()
-                    print("GRABBED ball!")
-                    self.start_backward(speed=SPEED.retreat_back.value)
-                    self.state = State.START_RETURN
-                else:
-                    pass
-            
-            # case State.TURN_BACK_TO_BOX: # t
-                
-                
+                match vision_x:
+                    case VISION_X.box_left: 
+                        self.stop_forward()
+                        self.start_anticlockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_BOX
+                    case VISION_X.box_centre: # ball in centre of frame so keep moving forward
 
-            # -------------------------  DEPOSIT INTO BOX -------------------------
-            
-            
+                        if distance_moved >= dist_to_move: # TODO: check this 
+                            self.stop_forward()
+
+                            # rotate to face the box -> then after go back 
+                            self.rotate(-180, speed = 0.5)
+
+                            # reverse back the calibrated distance # TODO: do we get deducted marks if we hit the box and "move it"
+                            self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
+
+                            # <======== deposit the balls =====>
+                            # self.flap.deposit_balls()  # UNCOMMENT THIS WHEN FLAP WORKING
+
+                            # after depositing the balls - move forward a bit, then go into the box detect 
+                            self.move_forward(distance=self.calibrated_reverse_dist, speed = SPEED.moving_to_centre.value)
+                            self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                            self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
+
+                        else:
+                            pass
+                    case VISION_X.box_right:  # ball to right of the frame, keep rotating clockwise     
+                        self.stop_forward()
+                        self.start_anticlockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_LEFT_BOX
+                    case _: # the box has left the frame 
+                        self.stop_forward()
+                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                        self.state = State.ROTATE_EXPLORE_BOX_PART_1
         
-        
-            
     
 
             

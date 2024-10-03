@@ -16,10 +16,11 @@ class VISION_X(Enum): # TODO: change these to use auto
     no_box_detected = 8 
 
 class VISION_Y(Enum):
-    line_detected = - 1
-    not_close = 0
-    close = 1
-    ball_in_grabber = 2
+    line_detected = auto()
+    not_close = auto()
+    close = auto()
+    ball_in_grabber = auto()
+    close_to_box = auto()
 
 class Vision:
     class Tennis_ball:
@@ -316,6 +317,9 @@ class Vision:
         # return lines_edges
 
     def box_detect(self, frame):
+        """
+        
+        """
         self.windowHeight = frame.shape[0]
         self.windowWidth = frame.shape[1]
 
@@ -343,8 +347,8 @@ class Vision:
                 x, y, w, h = cv2.boundingRect(contour)
                 # Draw the rectangle on the original frame
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green color with thickness of 2
-
-
+                
+        # return (vision_x, vision_y)
         return mask
     
 

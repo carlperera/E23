@@ -6,8 +6,8 @@ from enum import Enum
 
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12 # TODO: what's the pin for the flap? # TODO: does flap also need 2 pins or nah
-    PIN_CLAW_PWM1 = 13
-    PIN_CLAW_PWM2 = 12 # Originally 19, 12 for testing
+    PIN_CLAW_PWM1 = 12
+    PIN_CLAW_PWM2 = 13 # Originally 19, 12 for testing
 
 class Servo:
 
@@ -44,6 +44,10 @@ class Flap(Servo):
         self.setAngle(135)
         sleep(1) 
 
+    def deposit_balls(self):
+        self.open()
+        self.close()
+
 # class Claw(Servo):
 #     def __init__(self):
 #         super().__init__(SERVO_PINS.PIN_CLAW_PWM.value)
@@ -72,9 +76,8 @@ class Claw:
         self.pwm2 = GPIO.PWM(self.pin2, 50)
         self.pwm2.start(0)
 
-        self.setAngle(170,self.pwm1) # Servo 1 needs to start in the fully turned direction
+        self.setAngle(170,self.pwm2) # Servo 1 needs to start in the fully turned direction
 
-    # TODO: the two servos need to reverse direction (since they're going to be inverted)
     def setAngle(self, angle, servo):
         duty = angle / 18 + 3
         servo.start(duty)
@@ -100,8 +103,8 @@ class Claw:
         GPIO.cleanup()
 
     def open(self):
-        self.setAngle(0, self.pwm1) # Make servo 1 go back to starting pos
-        self.setAngle(175, self.pwm2) # Make servo 2 go to 180 degrees
+        self.setAngle(0, self.pwm2) # Make servo 1 go back to starting pos
+        self.setAngle(175, self.pwm1) # Make servo 2 go to 180 degrees
         sleep(1)
     
     def close(self):
@@ -111,6 +114,10 @@ class Claw:
         while angle1 < 170 and angle2 > 0:
             angle1+=1
             angle2 -= 1
-            self.setAngle(angle1,self.pwm1) # Make servo 1 go to 180 degrees
-            self.setAngle(angle2, self.pwm2) # Make servo 2 go back to starting pos
+            self.setAngle(angle1,self.pwm2) # Make servo 1 go to 180 degrees
+            self.setAngle(angle2, self.pwm1) # Make servo 2 go back to starting pos
             sleep(0.0114)
+
+    def collect_ball(self):
+        self.open()
+        self.close()

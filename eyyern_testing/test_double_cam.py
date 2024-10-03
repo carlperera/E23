@@ -21,14 +21,14 @@ class Vision:
         # ------------------- PRIMARY  -------------------
         self.capWidth_primary = 1280
         self.capHeight_primary = 960
-        self.camera_primary = cv2.VideoCapture(1) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        self.camera_primary = cv2.VideoCapture(0) # REMOVE cv2.CAP_DSHOW ON THE RPI
         self.camera_primary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_primary) #1280
         self.camera_primary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_primary) #550
 
         # ------------------- SECONDARY  -------------------
         self.capWidth_secondary = 640
         self.capHeight_secondary = 480
-        self.camera_secondary = cv2.VideoCapture(0) 
+        self.camera_secondary = cv2.VideoCapture(2) 
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_secondary) #1280
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_secondary) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)

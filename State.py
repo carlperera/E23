@@ -1,5 +1,7 @@
 from enum import Enum, auto
 
+
+
 class State(Enum):
     # Start States
     START_LEFT = auto()  # start on the left (facing 3 o'clock)
@@ -63,7 +65,29 @@ class State(Enum):
     FLAP_SEQUENCE = auto()  # open the flap to let balls out into the collection box, then close the flap 
    
 
-SECONDARY_CAM_STATES = [State.CLOSE_TO_TARGET, State.CLOSE_TO_BOX, State.ROTATE_LEFT_SECONDARY, State.ROTATE_RIGHT_SECONDARY, State.MOVE_TO_TARGET_SECONDARY, State.ROTATE_EXPLORE_FULL_SECONDARY, State.SECONDARY]
+    @property
+    def is_ball_state(self):
+       return not self.is_box_state
+    
+    @property
+    def is_box_state(self):
+        return self in frozenset((
+            State.BOX_DETECT_START, 
+            State.ROTATE_FACE_CENTRE_BOX,
+            State.ROTATE_LEFT_BOX,
+            State.ROTATE_RIGHT_BOX,
+            State.MOVE_TO_BOX, 
+            State.CLOSE_TO_BOX,
+            State.TURN_BACK_TO_BOX,
+            State.REVERSE_TO_BOX,
+            State.ROTATE_EXPLORE_BOX_PART_1,
+            State.ROTATE_EXPLORE_BOX_PART_2,
+            State.FLAP_SEQUENCE,
+    ))
+
+
+
+
 
 class StartPosition(Enum):
     """
