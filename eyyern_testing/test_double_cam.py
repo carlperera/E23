@@ -21,14 +21,14 @@ class Vision:
         # ------------------- PRIMARY  -------------------
         self.capWidth_primary = 1280
         self.capHeight_primary = 960
-        self.camera_primary = cv2.VideoCapture(0) # REMOVE cv2.CAP_DSHOW ON THE RPI
+        self.camera_primary = cv2.VideoCapture(2) # REMOVE cv2.CAP_DSHOW ON THE RPI
         self.camera_primary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_primary) #1280
         self.camera_primary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_primary) #550
 
         # ------------------- SECONDARY  -------------------
         self.capWidth_secondary = 640
         self.capHeight_secondary = 480
-        self.camera_secondary = cv2.VideoCapture(2) 
+        self.camera_secondary = cv2.VideoCapture(0) 
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_WIDTH, self.capWidth_secondary) #1280
         self.camera_secondary.set(cv2.CAP_PROP_FRAME_HEIGHT, self.capHeight_secondary) #550
         # cv2.namedWindow("Masked frame", cv2.WINDOW_NORMAL)
@@ -120,7 +120,7 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.80*self.capWidth_secondary *self.capHeight_secondary)):
+                    if camNum == 2 and (pixels > (0.70*self.capWidth_secondary *self.capHeight_secondary)):
                         self.grabbed_count+=1
                         print(f"BALL CONFIRMED IN THE GRABBER {self.grabbed_count}")
 
@@ -158,9 +158,13 @@ class Vision:
                     cv2.putText(frame, "Radius: " + str(radius), (center[0] + 10, center[1] + 40),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
                     # Optional: Draw vertical lines for center region boundaries
-                    cv2.line(frame , (int(self.capWidth_primary * 0.4), 0), (int(self.capWidth_primary * 0.4), self.capHeight_primary), (0, 255, 255), 2)  # Top center boundary
-                    cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
-        
+                    if camNum == 1:
+                        cv2.line(frame , (int(self.capWidth_primary * 0.4), 0), (int(self.capWidth_primary * 0.4), self.capHeight_primary), (0, 255, 255), 2)  # Top center boundary
+                        cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
+                    else:
+                        cv2.line(frame , (int(self.capWidth_secondary * 0.4), 0), (int(self.capWidth_secondary * 0.4), self.capHeight_secondary), (0, 255, 255), 2)  # Top center boundary
+                        cv2.line(frame, (int(self.capWidth_secondary * 0.6), 0), (int(self.capWidth_secondary * 0.6), self.capHeight_secondary), (0, 255, 255), 2)  # Bottom center boundary
+                    
         
         vision_x = -1 
         vision_y = -1
@@ -172,8 +176,13 @@ class Vision:
                 cv2.circle(frame, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                 # print("Max ball is ball: ",max_ball.ball_index)
 
+                
                 left_band = self.capWidth_primary *0.3
                 right_band = self.capWidth_primary * 0.7
+                if camNum == 2:
+                    left_band = self.capWidth_secondary *0.3
+                    right_band = self.capWidth_secondary * 0.7
+
 
                 if self.max_ball.x < left_band:
                     self.inCentre = 2  # Left third
@@ -209,6 +218,79 @@ class Vision:
 
 
         return (vision_x, vision_y)
+    
+    def box_detect(self, frame):
+        """
+        
+        """
+        self.windowHeight = frame.shape[0]
+        self.windowWidth = frame.shape[1]
+
+        vision_x = -1 # Default to box not being close
+        vision_y = -1
+
+        # Convert frame to HSV
+        frame_to_thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Define HSV range for filtering
+        v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [14, 60, 90, 20, 255, 200]
+        thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max))
+
+        # Apply morphological operations
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        # Find contours
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        min_contour_area = 2000  # Adjust this value as needed
+        largest_contour = None
+        largest_area = 0
+
+        # Identify the largest valid contour
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > min_contour_area and area > largest_area:
+                largest_area = area
+                largest_contour = contour
+
+        # Draw a bounding box around the largest contour, if it exists
+        if largest_contour is not None:
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            box_x = int(x + w / 2)
+            box_y = int(y + h / 2)
+
+            cv2.circle(frame, (box_x, box_y), 10, (0, 255, 0), -1)  # Draw a filled circle at the center
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle around the largest contour
+
+            left_band = self.capWidth_primary *0.3
+            right_band = self.capWidth_primary * 0.7
+            print(largest_area)
+            if box_x < left_band:
+                self.inCentre = 2  # Left third
+                print("LEFT")
+            elif left_band <= box_x <= right_band:
+                self.inCentre = 1  # Middle third
+                print("MID")
+            else:
+                self.inCentre = 3  # Right third
+                print("RIGHT")
+        
+            vision_x = self.inCentre
+            # print(f"inCentre: {inCentre}")
+
+            top_band = self.capHeight_primary*0.5
+            if box_y < top_band:
+                vision_y = 0  # not close 
+                print("FAR")
+            else:   
+                vision_y = 1  # close 
+                print("CLOSE (BOX LOW))")
+            
+
+        return (vision_x, vision_y)
+
 
     def line_detection(self, frame):
         height = frame.shape[0]

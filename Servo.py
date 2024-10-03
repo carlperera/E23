@@ -4,49 +4,81 @@ import RPi.GPIO as GPIO
 from time import sleep
 from enum import Enum
 
-class SERVO_PINS(Enum):
-    PIN_FLAP_PWM = 12 # TODO: what's the pin for the flap? # TODO: does flap also need 2 pins or nah
+class CLAW_PINS(Enum):
+    # PIN_FLAP_PWM = 12 # TODO: what's the pin for the flap? # TODO: does flap also need 2 pins or nah
     PIN_CLAW_PWM1 = 12
     PIN_CLAW_PWM2 = 13 # Originally 19, 12 for testing
 
+class FLAP_PINS(Enum):
+    PIN_FLAP_PWM1 = 15
+    PIN_FLAP_PWM2 = 17
+
+# ------------------------------ SERVO -----------------------------------
 class Servo:
 
-    def __init__(self, pin):
-        self.pin = pin
-        GPIO.setup(self.pin, GPIO.OUT)
-        self.pwm = GPIO.PWM(self.pin, 50)
-        self.pwm.start(0)
-    
-    def setAngle(self, angle):
+    def __init__(self, pin1, pin2, servo1_start_pos, servo2_start_pos):
+        self.pin1 = pin1
+        self.pin2 = pin2
+
+        GPIO.setup(self.pin1, GPIO.OUT)
+        GPIO.setup(self.pin2, GPIO.OUT)
+
+        self.pwm1 = GPIO.PWM(self.pin1, 50)
+        self.pwm1.start(0)
+
+        self.pwm2 = GPIO.PWM(self.pin2, 50)
+        self.pwm2.start(0)
+
+        self.setAngle(servo1_start_pos, self.pwm1)
+        self.setAngle(servo2_start_pos, self.pwm2)
+        # self.setAngle(170,self.pwm2) # Servo 1 needs to start in the fully turned direction
+
+    def setAngle(self, angle, servo):
         duty = angle / 18 + 3
-        GPIO.output(self.pin, True)
-        self.pwm.ChangeDutyCycle(duty)
-        sleep(1)
-        GPIO.output(self.pin, False)
-        self.pwm.ChangeDutyCycle(duty)
-        # self.pwm.ChangeDutyCycle(0)
+        servo.start(duty)
     
     def stop(self):
-        self.setAngle(0)
-        self.pwm.stop()
+        self.setAngle(0, self.pwm1)
+        self.setAngle(0, self.pwm2)
+        self.pwm1.stop()
+        self.pwm2.stop()
         GPIO.cleanup()
 
-
-class Flap(Servo):
-    def __init__(self):
-        super().__init__(SERVO_PINS.PIN_FLAP_PWM.value)
-
     def open(self):
-        self.setAngle(20)
+        self.setAngle(0, self.pwm2) # Make servo 1 go back to starting pos
+        self.setAngle(175, self.pwm1) # Make servo 2 go to 180 degrees
         sleep(1)
     
     def close(self):
-        self.setAngle(135)
-        sleep(1) 
+        angle1 = 0
+        angle2 = 175
 
-    def deposit_balls(self):
+        while angle1 < 170 and angle2 > 0:
+            angle1+=1
+            angle2 -= 1
+            self.setAngle(angle1,self.pwm2) # Make servo 1 go to 180 degrees
+            self.setAngle(angle2, self.pwm1) # Make servo 2 go back to starting pos
+            sleep(0.0114)
+
+    def collect_ball(self):
         self.open()
         self.close()
+
+# class Flap(Servo):
+#     def __init__(self):
+#         super().__init__(CLAW_PINS.PIN_FLAP_PWM.value)
+
+#     def open(self):
+#         self.setAngle(20)
+#         sleep(1)
+    
+#     def close(self):
+#         self.setAngle(135)
+#         sleep(1) 
+
+#     def deposit_balls(self):
+#         self.open()
+#         self.close()
 
 # class Claw(Servo):
 #     def __init__(self):
@@ -60,11 +92,63 @@ class Flap(Servo):
 #         self.setAngle(155)
 #         sleep(1)
 
+
+class Flap:
+
+    def __init__(self):
+        self.pin1 = FLAP_PINS.PIN_FLAP_PWM1.value
+        self.pin2 = FLAP_PINS.PIN_FLAP_PWM2.value
+
+        GPIO.setup(self.pin1, GPIO.OUT)
+        GPIO.setup(self.pin2, GPIO.OUT)
+
+        self.pwm1 = GPIO.PWM(self.pin1, 50)
+        self.pwm1.start(0)
+
+        self.pwm2 = GPIO.PWM(self.pin2, 50)
+        self.pwm2.start(0)
+
+        self.setAngle(170,self.pwm2) # TODO: test -> fill this in: servo 1 needs to start in the fully turned direction
+
+    def setAngle(self, angle, servo):
+        duty = angle / 18 + 3 # TODO: change this for the flap
+        servo.start(duty)
+
+    def stop(self):
+        self.setAngle(0, self.pwm1)   #todo what is stopping angle 
+        self.setAngle(0, self.pwm2)
+        self.pwm1.stop()
+        self.pwm2.stop()
+        GPIO.cleanup()
+
+    def open(self):
+        self.setAngle(0, self.pwm2) # TODO: Make servo 1 go back to starting pos
+        self.setAngle(175, self.pwm1) # TODO: Make servo 2 go to 180 degrees
+        sleep(1)
+    
+    def close(self):
+        angle1 = 0   # TODO: change this 
+        angle2 = 175  # TODO: change this 
+
+        while angle1 < 170 and angle2 > 0: # TODO: change this 
+            angle1 +=1
+            angle2 -= 1
+            self.setAngle(angle1,self.pwm2) # Make servo 1 go to 180 degrees
+            self.setAngle(angle2, self.pwm1) # Make servo 2 go back to starting pos
+            sleep(0.0114) 
+
+    def deposit_balls(self):
+        # TODO: how to know if all the balls have been deposited 
+        self.open()
+        self.close()
+
+
+
 class Claw:
 
     def __init__(self):
-        self.pin1 = SERVO_PINS.PIN_CLAW_PWM1.value
-        self.pin2 = SERVO_PINS.PIN_CLAW_PWM2.value
+        self.pin1 = CLAW_PINS.PIN_CLAW_PWM1.value
+        self.pin2 = CLAW_PINS.PIN_CLAW_PWM2.value
         # self.channel_list = (self.pin1, self.pin2)
 
         GPIO.setup(self.pin1, GPIO.OUT)

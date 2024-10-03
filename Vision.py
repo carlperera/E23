@@ -167,8 +167,12 @@ class Vision:
                 cv2.circle(frame, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                 # print("Max ball is ball: ",max_ball.ball_index)
 
-                left_band = self.capWidth_primary *0.3
-                right_band = self.capWidth_primary * 0.7
+                if camNum == 1:
+                    left_band = self.capWidth_primary *0.3
+                    right_band = self.capWidth_primary * 0.7
+                else:
+                    left_band = self.capWidth_secondary *0.3
+                    right_band = self.capWidth_secondary * 0.7
 
                 if self.max_ball.x < left_band:
                     # Left third
@@ -323,6 +327,9 @@ class Vision:
         self.windowHeight = frame.shape[0]
         self.windowWidth = frame.shape[1]
 
+        vision_x = -1 # Default to box not being close
+        vision_y = -1
+
         # Convert frame to HSV
         frame_to_thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -339,17 +346,48 @@ class Vision:
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         min_contour_area = 2000  # Adjust this value as needed
+        largest_contour = None
+        largest_area = 0
 
-        # Draw bounding boxes around identified rectangles
+        # Identify the largest valid contour
         for contour in contours:
-            if cv2.contourArea(contour) > min_contour_area:
-                # Get the bounding rectangle coordinates
-                x, y, w, h = cv2.boundingRect(contour)
-                # Draw the rectangle on the original frame
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green color with thickness of 2
-                
-        # return (vision_x, vision_y)
-        return mask
+            area = cv2.contourArea(contour)
+            if area > min_contour_area and area > largest_area:
+                largest_area = area
+                largest_contour = contour
+
+        # Draw a bounding box around the largest contour, if it exists
+        if largest_contour is not None:
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            box_x = int(x + w / 2)
+            box_y = int(y + h / 2)
+
+            cv2.circle(frame, (box_x, box_y), 10, (0, 255, 0), -1)  # Draw a filled circle at the center
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle around the largest contour
+
+            left_band = self.capWidth_primary *0.3
+            right_band = self.capWidth_primary * 0.7
+            
+            
+            if box_x < left_band:
+                self.inCentre = 2  # Left third
+            elif left_band <= box_x <= right_band:
+                self.inCentre = 1  # Middle third
+            else:
+                self.inCentre = 3  # Right third
+        
+            vision_x = self.inCentre
+            # print(f"inCentre: {inCentre}")
+
+            top_band = self.capHeight_primary*0.5
+            if box_y < top_band:
+                vision_y = 0  # not close 
+            else:   
+                vision_y = 1  # close 
+            # Can also use area to decide if close or not?
+
+        return (vision_x, vision_y)
+        # return mask
     
 
     def close(self):

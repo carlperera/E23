@@ -28,12 +28,12 @@ while True: # for each frame from camera
         # if curr_state == "2":
             # ret, frame = vision.camera_secondary.read()
         # else:
-        ret, frame = vision.camera_secondary.read()
+        ret, frame = vision.camera_primary.read()
         
 
-        vision_x, vision_y = vision.track_ball(frame, 2)
+        # vision_x, vision_y = vision.track_ball(frame, 2)
 
-        # banchod_out = vision.banchod_detect(frame)
+        vis_x, vis_y = vision.box_detect(frame)
         
         
         if not ret:
