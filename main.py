@@ -73,7 +73,7 @@ if __name__ == "__main__":
         try:
             # get latest frame
             
-            if robot.state == State.CLOSE_TO_TARGET:
+            if robot.state.is_secondary_state:
                 ret, frame = vision.camera_secondary.read()
             else:
                 ret, frame = vision.camera_primary.read()
@@ -87,9 +87,14 @@ if __name__ == "__main__":
                 print("SIMULATION TIME REACHED: stopped the robot)")
                 robot.shutdown()
                 break
-    
-            robot.handle_state(frame)
+
             # cv2.imshow('Live feed',frame)
+            # if cv2.waitKey(1) & 0xFF is ord('q'):
+            #     break
+
+            
+            robot.handle_state(frame)
+            
             
         
             # wait for the next frame - 30 FPS 

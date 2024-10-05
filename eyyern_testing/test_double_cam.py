@@ -162,8 +162,8 @@ class Vision:
                         cv2.line(frame , (int(self.capWidth_primary * 0.4), 0), (int(self.capWidth_primary * 0.4), self.capHeight_primary), (0, 255, 255), 2)  # Top center boundary
                         cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
                     else:
-                        cv2.line(frame , (int(self.capWidth_secondary * 0.4), 0), (int(self.capWidth_secondary * 0.4), self.capHeight_secondary), (0, 255, 255), 2)  # Top center boundary
-                        cv2.line(frame, (int(self.capWidth_secondary * 0.6), 0), (int(self.capWidth_secondary * 0.6), self.capHeight_secondary), (0, 255, 255), 2)  # Bottom center boundary
+                        cv2.line(frame , (int(self.capWidth_secondary * 0.2), 0), (int(self.capWidth_secondary * 0.2), self.capHeight_secondary), (0, 255, 255), 2)  # Top center boundary
+                        cv2.line(frame, (int(self.capWidth_secondary * 0.8), 0), (int(self.capWidth_secondary * 0.8), self.capHeight_secondary), (0, 255, 255), 2)  # Bottom center boundary
                     
         
         vision_x = -1 
@@ -180,8 +180,8 @@ class Vision:
                 left_band = self.capWidth_primary *0.3
                 right_band = self.capWidth_primary * 0.7
                 if camNum == 2:
-                    left_band = self.capWidth_secondary *0.3
-                    right_band = self.capWidth_secondary * 0.7
+                    left_band = self.capWidth_secondary *0.1
+                    right_band = self.capWidth_secondary * 0.9
 
 
                 if self.max_ball.x < left_band:

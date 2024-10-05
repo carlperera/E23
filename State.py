@@ -101,6 +101,8 @@ class State(Enum):
             State.ROTATE_LEFT_TARGET_SECONDARY,
             State.ROTATE_RIGHT_TARGET_SECONDARY,
             State.MOVE_TO_TARGET_SECONDARY,
+            State.ROTATE_EXPLORE_FULL_SECONDARY_PART_1,
+            State.ROTATE_EXPLORE_FULL_SECONDARY_PART_2,
         ))
 
 
