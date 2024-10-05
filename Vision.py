@@ -3,24 +3,26 @@ import numpy as np
 from enum import Enum, auto
 
 class VISION_X(Enum): # TODO: change these to use auto
-    line_detected = -1
-    ball_centre = 1
-    ball_left = 2
-    ball_right = 3
-    ball_in_grabber = 4
+    no_ball_detected = auto()
+    ball_centre = auto()
+    ball_left = auto()
+    ball_right = auto()
+    ball_in_grabber = auto()
 
-    box_right = 5
-    box_left = 6
-    box_centre = 7
+    box_right = auto()
+    box_left = auto()
+    box_centre = auto()
 
-    no_box_detected = 8 
+    no_box_detected = auto()
 
 class VISION_Y(Enum):
-    line_detected = auto()
-    not_close = auto()
-    close = auto()
+    no_ball_detected = auto()
+    ball_not_close = auto()
+    ball_close = auto()
     ball_in_grabber = auto()
-    close_to_box = auto()
+    box_close = auto()
+    box_not_close = auto()
+    no_box_detected = auto()
 
 class Vision:
     class Tennis_ball:
@@ -110,8 +112,8 @@ class Vision:
                     
                     if camNum == 2 and (pixels > (0.7*self.capWidth_secondary *self.capHeight_secondary)):
                         print("BALL CONFIRMED IN THE GRABBER")
-                        vision_x = VISION_X.ball_in_grabber.value
-                        vision_y = VISION_Y.ball_in_grabber.value
+                        vision_x = VISION_X.ball_in_grabber
+                        vision_y = VISION_Y.ball_in_grabber
 
                         return (vision_x, vision_y)
                     elif camNum == 2:
@@ -157,8 +159,8 @@ class Vision:
                     cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
         
         
-        vision_x = VISION_X.line_detected
-        vision_y = VISION_Y.line_detected
+        vision_x = VISION_X.no_ball_detected
+        vision_y = VISION_Y.no_ball_detected
 
         if ball_list:
             self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
@@ -188,9 +190,9 @@ class Vision:
 
                 top_band = self.capHeight_primary*0.7
                 if self.max_ball.y < top_band:
-                    vision_y = VISION_Y.not_close  # not close 
+                    vision_y = VISION_Y.ball_not_close  # not close 
                 else:   
-                    vision_y = VISION_Y.close  # close 
+                    vision_y = VISION_Y.ball_close  # close 
 
         # cv2.imshow("Masked frame", mask)
         # cv2.imshow("Webcam", frame)
@@ -204,8 +206,8 @@ class Vision:
             # no balls detected if ball outside of the lines
             if line_detection:
                 print("line detected!")
-                vision_x = VISION_X.line_detected
-                vision_y = VISION_X.line_detected
+                vision_x = VISION_X.no_ball_detected
+                vision_y = VISION_X.no_ball_detected
 
         return (vision_x, vision_y)
 
@@ -327,8 +329,8 @@ class Vision:
         self.windowHeight = frame.shape[0]
         self.windowWidth = frame.shape[1]
 
-        vision_x = -1 # Default to box not being close
-        vision_y = -1
+        vision_x = VISION_X.no_box_detected # Default to box not being close
+        vision_y = VISION_Y.no_box_detected
 
         # Convert frame to HSV
         frame_to_thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -370,20 +372,20 @@ class Vision:
             
             
             if box_x < left_band:
-                self.inCentre = 2  # Left third
+                self.inCentre = VISION_X.box_left  # Left third
             elif left_band <= box_x <= right_band:
-                self.inCentre = 1  # Middle third
+                self.inCentre = VISION_X.box_centre  # Middle third
             else:
-                self.inCentre = 3  # Right third
+                self.inCentre = VISION_X.box_right  # Right third
         
             vision_x = self.inCentre
             # print(f"inCentre: {inCentre}")
 
             top_band = self.capHeight_primary*0.5
             if box_y < top_band:
-                vision_y = 0  # not close 
+                vision_y = VISION_Y.box_not_close  # not close 
             else:   
-                vision_y = 1  # close 
+                vision_y = VISION_Y.box_close  # close 
             # Can also use area to decide if close or not?
 
         return (vision_x, vision_y)

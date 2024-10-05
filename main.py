@@ -62,8 +62,8 @@ if __name__ == "__main__":
     vision = Vision()
    
     time.sleep(2) # give it some time to setup the primary and secondary cameras 
-
-    start_pos = StartPosition.LEFT
+ 
+    start_pos = StartPosition.LEFT # we are starting on the left
     
     robot = Robot(vision=vision, start_pos = start_pos)
 

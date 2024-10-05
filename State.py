@@ -41,10 +41,17 @@ class State(Enum):
     PICKUP_BALL = auto()  # actuate the servo, stops the state machine to actuate claw, then lower it down
 
     # Rotating in secondary camera
-    ROTATE_EXPLORE_FULL_SECONDARY = auto()  # rotate 360 in secondary camera, if the ball has disappeared from view
-  
+    # ROTATE_EXPLORE_FULL_SECONDARY = auto()  # rotate 360 in secondary camera, if the ball has disappeared from view
+    
+    ROTATE_EXPLORE_FULL_SECONDARY_PART_1 = auto()
+    ROTATE_EXPLORE_FULL_SECONDARY_PART_2 = auto()
 
     ROTATE_EXPLORE = auto()  # rotate in place 360 to find a ball if exists 
+
+
+    ROTATE_LEFT_TARGET_SECONDARY = auto()  # secondary - ball is left
+    ROTATE_RIGHT_TARGET_SECONDARY = auto()  # secondary - ball is right
+   
 
     # Delivery
     BOX_DETECT_START = auto()  # rotate in place 360 to see the box (at any (x,y) pos)
@@ -84,6 +91,20 @@ class State(Enum):
             State.ROTATE_EXPLORE_BOX_PART_2,
             State.FLAP_SEQUENCE,
     ))
+
+    @property
+    def is_primary_state(self):
+        return not self.is_secondary_state
+    
+    @property
+    def is_secondary_state(self):
+        return self in frozenset((
+            State.MOVE_TO_TARGET_SECONDARY,
+            State.ROTATE_LEFT_SECONDARY,
+            State.MOVE_TO_TARGET_SECONDARY,
+        ))
+
+
 
 
 

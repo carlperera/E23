@@ -1508,7 +1508,7 @@ class Robot:
             # TODO: replace with rotate 360 once motor step count issue fixed 
             case State.ROTATE_EXPLORE_BOX_PART_1:
                 match vision_x:
-                        case VISION_X.line_detected: # nothing detected
+                        case VISION_X.no_ball_detected: # nothing detected
                             if self.check_rotated_by_angle(180):  # check if already spun 360 
                                 self.stop_anticlockwise()
 
@@ -1536,7 +1536,7 @@ class Robot:
 
             case State.ROTATE_EXPLORE_BOX_PART_2:
                 match vision_x:
-                    case VISION_X.line_detected: # nothing detected
+                    case VISION_X.no_ball_detected: # nothing detected
                         # check if already spun 360 
                         if self.check_rotated_by_angle(180):
                             self.stop_anticlockwise()

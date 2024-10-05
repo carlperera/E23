@@ -1,7 +1,7 @@
 import time
 import gpiozero
 import math
-from State import State, SECONDARY_CAM_STATES
+from State import State
 from Vision import Vision
 from State import StartPosition
 from Servo import Flap, Claw
@@ -44,6 +44,10 @@ class SPEED(Enum):
     retreat_back = 0.6
     moving_to_centre = 0.8 
 
+    rotate_to_target_secondary = 0.5
+    move_to_target_secondary = 0.5
+    close_to_target_secondary = 0.5
+
 class PINSMOTOR(Enum):
     PIN_MOTOR1_IN1 =         17
     PIN_MOTOR1_IN2 =          27
@@ -63,6 +67,10 @@ class MOVEMENT_DIRECTION(Enum):
     forward = auto()
     backward =  auto()
 
+
+class CAMERA_NUM(Enum):
+    primary = 1 
+    secondary = 2
 
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12
@@ -150,9 +158,17 @@ class Robot:
 
         # ----------------  ----------------
         self.claw = Claw()
-        # self.flap = Flap()
+        self.flap = Flap()
        
     # ------------------------------- GET METHODS --------------------
+    def get_orientation(self):
+        return self.th
+    
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        self.y
 
 
     # ------------------------------ BASIC OPERATIONS -------------------
@@ -215,8 +231,7 @@ class Robot:
             return MOVEMENT_DIRECTION.anticlockwise
         return None
     
-    def get_orientation(self):
-        return self.th
+    
     
     def check_rotated_90_at_start(self):
         start_pos = self.start_pos 
@@ -226,11 +241,7 @@ class Robot:
         else:  # start LEFT # TODO: check if this logic is right -> ask VishGPT if this is goood
             return curr_orientation >= 270 # just need to check that it's gone below 0 and then "gone over"
 
-    def get_x(self):
-        return self.x
-
-    def get_y(self):
-        self.y
+   
 
     def distance_per_step(self):
         wheel_rotatations_per_step = 1 / (CPR*GEAR_RATIO)
@@ -1116,15 +1127,45 @@ class Robot:
         1. ball detection + go to it + retrieval 
         2. box detection + go to it + disposal 
 
-        """
-        # TODO: add all of the secondary states here 
+        TODO: figure put how to switc from primary to scondary camera 
+        => primary -> secondary
+        => secondary -> primary camera 
+        need to make sure that the line detection is really good so that we do not cross the boundaries at all 
 
-        # TODO: changing the camNums is not just related to a single state anymore 
-        if self.state in SECONDARY_CAM_STATES:
+        => primary 
+        -> 
+        => secondary 
+        -> 
+
+        sequence of steps once you've detected a ball:
+        1. using primary camera, you detect the ball
+            1.1 the ball is to the left, so you rotate anticlockwise until it is in the centre of the frame
+                 1.1.1 if it goes out of frame to the right, perform 1.3
+                 1.1.2 if the ball is "close enough", switch to secondary camera and make finer adjustments 
+            1.2 the ball is in the centre, so you keep moving forward   
+                1.2.1 if it goes out of frame to the left, perform 1.1
+                1.2.2 if it goes out of frame to the right, perform 1.3
+                1.2.3 if the ball is "close enough", switch to secondary camera and make finer adjustments 
+            1.3 the ball is to the right, so you rotate clockwise until it is in the centre of the frame 
+                1.3.1 if it goes out of frame to the left, perform 1.1
+                1.3.2 if the ball is "close enough", switch to secondary camera and make finer adjustments  
+
+            
+            [1.1.2, 1.2.3, 1.3.2]:
+                if you lose the ball (i.e vision_x = -1) after having seen a ball in frame, you want to do a full 360 rotation, 
+                    -> chances are the ball has just been blown away by wind (drifted) a close distance away
+                    -> if you still can't find the ball after rotating a full 360 with the secondary camera, then switch back to the primary secondary and do the ROTATE_PRIMARY_1
+        """
+
+
+        # ---------------------------------  DECIDE: use PRIMARY or SECONDARY camera?  ---------------------------------
+        
+        if self.state.is_secondary_state:
             camNum = 2 
         else:
             camNum = 1
-        
+
+        # ---------------------------------  DECIDE: detect BOX or BALL?  ---------------------------------
         # ball state - detect a ball
         ball_NOT_box_state = self.state.is_ball_state
         if ball_NOT_box_state:
@@ -1133,7 +1174,9 @@ class Robot:
         else:   
             vision_x, vision_y = self.vision.box_detect(frame)
 
-        print(f"{'BALL STATE' if ball_NOT_box_state else 'BOX STATE'} --> vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
+        ball_state_output = 'BALL STATE' if ball_NOT_box_state else 'BOX STATE'
+        camera_num_output = f"Camera = {camNum}"
+        print(f"{ball_state_output} | {camera_num_output} --> vision_x = {vision_x}  --- vision_y = {vision_y} --- camNum = {camNum}")
 
         old_state = self.state
 
@@ -1147,9 +1190,9 @@ class Robot:
                         self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in frame in centre 
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close - switch to seconday camera 
                             self.start_forward(SPEED.close_to_target.value)
-                            self.state = State.CLOSE_TO_TARGET # switch to secondary camera
+                            self.state = State.CLOSE_TO_TARGET  
                         else: # not close 
                             self.start_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_TARGET
@@ -1166,7 +1209,7 @@ class Robot:
                         self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in frame in centre 
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET 
                         else: # not close 
@@ -1187,7 +1230,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in frame in centre 
                         self.stop_clockwise()
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close -> switch to secondary camera 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: 
@@ -1214,7 +1257,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in frame in centre 
                         self.stop_anticlockwise()
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: 
@@ -1259,7 +1302,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_TARGET 
                     case VISION_X.ball_centre:
                         self.stop_forward()
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else:
@@ -1291,7 +1334,7 @@ class Robot:
                         case VISION_X.ball_centre:
                             self.stop_anticlockwise() # stop rotating
                             
-                            if vision_y == VISION_Y.close: # close 
+                            if vision_y == VISION_Y.ball_close: # close ->
                                 self.start_forward(SPEED.close_to_target.value)
                                 self.state = State.CLOSE_TO_TARGET
                             else: # not close 
@@ -1320,7 +1363,7 @@ class Robot:
                     case VISION_X.ball_centre:
                         self.stop_anticlockwise() # stop rotating
 
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else:
@@ -1373,7 +1416,7 @@ class Robot:
                             case MOVEMENT_DIRECTION.clockwise:
                                 self.stop_clockwise()
                     
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: #not close
@@ -1421,7 +1464,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in centre of frame so start moving forward
                         self.stop_anticlockwise()
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: # not close 
@@ -1440,7 +1483,7 @@ class Robot:
                         pass 
                     case VISION_X.ball_centre: # ball in centre of frame so start moving forward
                         
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.stop_anticlockwise()
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
@@ -1464,7 +1507,7 @@ class Robot:
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_TARGET
                     case VISION_X.ball_centre: # ball in centre of frame
-                        if vision_y == VISION_Y.close: # close 
+                        if vision_y == VISION_Y.ball_close: # close 
                             self.stop_forward() #stop moving first
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
@@ -1479,7 +1522,6 @@ class Robot:
                         self.start_anticlockwise(speed = SPEED.rotating_explore.value)
                         self.state = State.ROTATING_START_RIGHT_EXPLORE
 
-            # TODO: FINISH from here onwards 
             case State.CLOSE_TO_TARGET:
                 print("IN CLOSE TO TARGET ------------------")
                 match vision_x:
@@ -1502,6 +1544,104 @@ class Robot:
         
                     case _:
                         pass
+
+            # ------------------------ LOCKED ONTO TARGET - Secondary ------------------------  
+            # CHECKED 
+            case State.ROTATE_RIGHT_TARGET_SECONDARY:
+                match vision_x:
+                    case VISION_X.ball_left: 
+                        self.stop_clockwise()
+                        self.start_anticlockwise(SPEED.rotate_to_target_secondary.value)
+                        self.state = State.ROTATE_LEFT_TARGET_SECONDARY
+                    case VISION_X.ball_centre: # ball in centre of frame so start moving forward
+                        
+                        # both of these vision_y values do the same thing here 
+                        if vision_y == VISION_Y.ball_close: # close
+                            self.stop_clockwise()
+                            self.move_forward(SPEED.move_to_target_secondary.value)
+                            self.state = State.MOVE_TO_TARGET_SECONDARY
+                        else: # not close 
+                            self.stop_clockwise()
+                            self.move_forward(SPEED.move_to_target_secondary.value)
+                            self.state = State.MOVE_TO_TARGET_SECONDARY
+
+                    case VISION_X.ball_right:  # ball to right of the frame, keep rotating clockwise     
+                        print("in rotate right secondary, keep in rotate right")
+                        pass
+                    case _: # the ball has left the frame - just do a full 
+                        self.stop_clockwise()
+                        self.start_anticlockwise(SPEED.rotate_to_target_secondary.value)
+                        self.state = State.ROTATE_EXPLORE_FULL_SECONDARY_PART_1
+            # CHECKED
+            case State.ROTATE_LEFT_TARGET_SECONDARY:
+                match vision_x:
+                    case VISION_X.ball_left:  # ball still to left, keep rotating anticlock
+                        print("in rotate left secondary, keep in rotate left")
+                        pass 
+                    case VISION_X.ball_centre: # ball in centre of frame so start moving forward
+                        
+                        # both of these vision_y values do the same thing here 
+                        if vision_y == VISION_Y.ball_close: # close 
+                            self.stop_anticlockwise()
+                            self.move_forward(SPEED.move_to_target_secondary.value)
+                            self.state = State.MOVE_TO_TARGET_SECONDARY
+                        else: # not close 
+                            self.stop_anticlockwise()
+                            self.move_forward(SPEED.move_to_target_secondary.value)
+                            self.state = State.MOVE_TO_TARGET_SECONDARY
+                    case VISION_X.ball_right:  # ball now to right of the frame, rotate to right  
+                        self.stop_anticlockwise()
+                        self.start_clockwise(speed=SPEED.rotate_to_target_secondary.value)
+                        self.state = State.ROTATE_RIGHT_TARGET_SECONDARY
+                    case _: # the ball has left the frame 
+                        self.stop_anticlockwise()
+                        self.start_anticlockwise(SPEED.rotating_explore.value)
+                        self.state = State.ROTATE_EXPLORE_FULL_SECONDARY_PART_1
+
+            # CHECKED 
+            case State.MOVE_TO_TARGET_SECONDARY:
+                match vision_x:
+                    case VISION_X.ball_left:  # ball to the left so readjust 
+                        self.stop_forward()
+                        self.start_anticlockwise(SPEED.rotate_to_target_secondary.value)
+                        self.state = State.ROTATE_LEFT_TARGET_SECONDARY
+                    
+                    case VISION_X.ball_in_grabber: # the ball is in the grabber (x)
+                        if vision_y == VISION_Y.ball_in_grabber: # the ball is in the grabber (y)
+                            self.stop_forward() # stop moving first
+
+                            # ----------> COLLECT the ball here <----------
+                            self.claw.collect_ball()    
+
+                            if self.ball_threshold_reached():  # we need to deposit the balls (i.e find the box) -> switch back to secondary
+                                self.stop_forward()
+                                self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                                self.state = State.ROTATE_EXPLORE_BOX_PART_1
+
+                            else:            # otherwise look for next ball
+                                self.stop_forward()
+                                self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                                self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1 # TODO: if we fail to find a ball with primary -> then switch to secondary again?
+
+                        else: # not close 
+                            #  RuntimeError(f"ERROR: vision_x = {vision_x} but vision_y = {vision_y}")
+                            print(f"ERROR: vision_x = {vision_x} but vision_y = {vision_y}")
+                            pass # ERROR?
+
+                    case VISION_X.ball_centre: # ball in centre of frame
+                        pass # keep moving forwad
+                
+                    case VISION_X.ball_right:  # ball to right of the frame, stop moving to readjust    
+                        self.stop_forward()
+                        self.start_clockwise(speed=SPEED.rotate_to_target_secondary.value)
+                        self.state = State.ROTATE_RIGHT_TARGET_SECONDARY
+
+                    # TODO: recheck thi
+                    case _: # the ball has left the frame - rotate using the secondary camera (ball is probably nearby)
+                        self.stop_forward()
+                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                        self.state = State.ROTATE_EXPLORE_FULL_SECONDARY_PART_1
+
 
             # -------------------------  FIND BOX -------------------------
             case State.ROTATE_FACE_CENTRE_BOX:
@@ -1538,7 +1678,7 @@ class Robot:
                     case VISION_X.box_centre:
                         self.stop_forward() 
                         # TODO: differentiate when the box is close and not close using vision_y
-                        if vision_y == VISION_Y.close_to_box: # close to box 
+                        if vision_y == VISION_Y.box_close: # close to box 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else:
@@ -1567,7 +1707,7 @@ class Robot:
                     case VISION_X.box_centre:
                         self.stop_anticlockwise() # stop rotating
                         
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
@@ -1596,7 +1736,7 @@ class Robot:
                     case VISION_X.box_centre:
                         self.stop_anticlockwise() # stop rotating
 
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else:
@@ -1648,7 +1788,7 @@ class Robot:
                             case MOVEMENT_DIRECTION.clockwise:
                                 self.stop_clockwise()
                     
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_TARGET
                         else: #not close
@@ -1696,7 +1836,7 @@ class Robot:
                         self.state = State.ROTATE_LEFT_BOX 
                     case VISION_X.box_centre:
                         self.stop_forward()
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else:
@@ -1724,7 +1864,7 @@ class Robot:
                         pass 
                     case VISION_X.box_centre: # ball in centre of frame so start moving forward
                         self.stop_anticlockwise()
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.move_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
@@ -1745,7 +1885,7 @@ class Robot:
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX
                     case VISION_X.box_centre: # ball in centre of frame
-                        if vision_y == VISION_Y.close_to_box: # close 
+                        if vision_y == VISION_Y.box_close: # close 
                             self.stop_forward() #stop moving first
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
@@ -1808,7 +1948,7 @@ class Robot:
                             self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
 
                             # <======== deposit the balls =====>
-                            # self.flap.deposit_balls()  # UNCOMMENT THIS WHEN FLAP WORKING
+                            self.flap.deposit_balls()  # UNCOMMENT THIS WHEN FLAP WORKING
 
                             # after depositing the balls - move forward a bit, then go into the box detect 
                             self.move_forward(distance=self.calibrated_reverse_dist, speed = SPEED.moving_to_centre.value)
@@ -1830,30 +1970,3 @@ class Robot:
 
             
         print(f"old state = {old_state.name} --- new-state = {self.state.name}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                
-
-            
-           
-        
-
-    
-
-
-    
-
-        
-  
