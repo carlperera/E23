@@ -33,8 +33,8 @@ class State(Enum):
     CLOSE_TO_TARGET = auto()  # close to target, switch to secondary camera? (<30% of top frame)
  
     # Secondary camera
-    ROTATE_LEFT_SECONDARY = auto()
-    ROTATE_RIGHT_SECONDARY = auto()
+    ROTATE_LEFT_TARGET_SECONDARY = auto()  # secondary - ball is left
+    ROTATE_RIGHT_TARGET_SECONDARY = auto()  # secondary - ball is right
     MOVE_TO_TARGET_SECONDARY = auto()
     
     # Pickup Sequence
@@ -49,8 +49,7 @@ class State(Enum):
     ROTATE_EXPLORE = auto()  # rotate in place 360 to find a ball if exists 
 
 
-    ROTATE_LEFT_TARGET_SECONDARY = auto()  # secondary - ball is left
-    ROTATE_RIGHT_TARGET_SECONDARY = auto()  # secondary - ball is right
+
    
 
     # Delivery
@@ -99,8 +98,8 @@ class State(Enum):
     @property
     def is_secondary_state(self):
         return self in frozenset((
-            State.MOVE_TO_TARGET_SECONDARY,
-            State.ROTATE_LEFT_SECONDARY,
+            State.ROTATE_LEFT_TARGET_SECONDARY,
+            State.ROTATE_RIGHT_TARGET_SECONDARY,
             State.MOVE_TO_TARGET_SECONDARY,
         ))
 

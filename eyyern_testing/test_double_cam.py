@@ -194,7 +194,8 @@ class Vision:
                 vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-                top_band = self.capHeight_primary*0.7
+                top_band = self.capHeight_primary*0.8
+                cv2.line(frame , (0, int(top_band)), (self.capWidth_primary, int(top_band)), (0, 255, 255), 2)  # Top center boundary
                 if self.max_ball.y < top_band:
                     vision_y = 0  # not close 
                 else:   
