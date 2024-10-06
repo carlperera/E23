@@ -416,7 +416,7 @@ class Vision:
                 vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-                top_band = self.capHeight_primary*0.5
+                top_band = self.capHeight_primary*0.35
                 if box_y < top_band:
                     vision_y = VISION_Y.box_not_close  # not close 
                     # print("NOT CLOSE")
