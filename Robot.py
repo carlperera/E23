@@ -2103,7 +2103,9 @@ class Robot:
                         self.state = State.ROTATE_LEFT_BOX
 
                     case VISION_X.box_centre: # ball in centre of frame so keep moving forward
-                        
+
+                        # TODO: the robot is moving too close to teh collection box before rotating (often leads to kknocking the box out)
+                        # sol to above: increase the x bounds for the box being considered box?
                         self.stop_forward()
 
                         # <-rotate to face the back to the box
