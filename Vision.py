@@ -1,6 +1,7 @@
 import cv2
 import numpy as np 
 from enum import Enum, auto
+import math
 
 class VISION_X(Enum): # TODO: change these to use auto
     no_ball_detected = auto()
@@ -110,15 +111,7 @@ class Vision:
                     confirm = True
                     ball_number += 1
                     
-                    if camNum == 2 and (pixels > (0.7*self.capWidth_secondary *self.capHeight_secondary)):
-                        print("BALL CONFIRMED IN THE GRABBER")
-                        vision_x = VISION_X.ball_in_grabber
-                        vision_y = VISION_Y.ball_in_grabber
-
-                        return (vision_x, vision_y)
-                    elif camNum == 2:
-                        print(f"Proportion of frame covered: {pixels / (self.capWidth_secondary *self.capHeight_secondary) }")
-                        
+                    
                         
 
             except Exception as e:
@@ -158,7 +151,18 @@ class Vision:
                     # cv2.line(frame , (int(self.capWidth_primary * 0.4), 0), (int(self.capWidth_primary * 0.4), self.capHeight_primary), (0, 255, 255), 2)  # Top center boundary
                     # cv2.line(frame, (int(self.capWidth_primary * 0.6), 0), (int(self.capWidth_primary * 0.6), self.capHeight_primary), (0, 255, 255), 2)  # Bottom center boundary
         
-        
+                    ball_area = math.pi* (radius **2) # area of the ball in pixels
+                    if camNum == 2 and (ball_area > (0.7*self.capWidth_secondary *self.capHeight_secondary)):
+                        print("BALL CONFIRMED IN THE GRABBER")
+                        vision_x = VISION_X.ball_in_grabber
+                        vision_y = VISION_Y.ball_in_grabber
+
+                        return (vision_x, vision_y)
+                    elif camNum == 2:
+                        print(f"Proportion of frame covered: {ball_area / (self.capWidth_secondary *self.capHeight_secondary) }")
+                        
+
+
         vision_x = VISION_X.no_ball_detected
         vision_y = VISION_Y.no_ball_detected
 
@@ -166,7 +170,7 @@ class Vision:
             self.max_ball = max(ball_list, key=lambda ball: ball.pixels)
 
             if self.max_ball:
-                cv2.circle(frame, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
+                # cv2.circle(frame, (int(self.max_ball.x), int(self.max_ball.y)), int(radius), (0, 0, 255), 2)
                 # print("Max ball is ball: ",max_ball.ball_index)
 
                 if camNum == 1:
@@ -326,70 +330,104 @@ class Vision:
         """
         
         """
-        self.windowHeight = frame.shape[0]
-        self.windowWidth = frame.shape[1]
 
+        def combine_contours(contours, threshold=100, min_area = 500):
+            combined = []
+            
+            for cnt in contours:
+                # Only consider contours with an area greater than min_area
+                if cv2.contourArea(cnt) < min_area:
+                    continue # Skip this contour
+                
+                merged = False
+                for combined_cnt in combined:
+                    # Calculate the bounding boxes
+                    x1, y1, w1, h1 = cv2.boundingRect(combined_cnt)
+                    x2, y2, w2, h2 = cv2.boundingRect(cnt)
+
+                    # Check if the bounding boxes overlap
+                    if (abs(x1 - x2) < threshold and abs(y1 - y2) < threshold):
+                        # Merge the contours by taking the convex hull
+                        combined_cnt = cv2.convexHull(np.vstack((combined_cnt, cnt)))
+                        merged = True
+                        break
+                
+                if not merged:
+                    # Only add the contour to combined if it's above the min_area
+                    combined.append(cnt)
+            
+            return combined
+
+    # Function to get the largest contour
+        def get_largest_contour(contours):
+            if not contours:
+                return None
+            return max(contours, key=cv2.contourArea)
+        
         vision_x = VISION_X.no_box_detected # Default to box not being close
         vision_y = VISION_Y.no_box_detected
+        # Convert to HSV color space
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        # Convert frame to HSV
-        frame_to_thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Define the range for brown color
+        lower_brown = np.array([4, 30, 75])  # Adjust as needed
+        upper_brown = np.array([20, 150, 190])
+        mask = cv2.inRange(hsv, lower_brown, upper_brown)
 
-        # Define HSV range for filtering
-        v1_min, v2_min, v3_min, v1_max, v2_max, v3_max = [14, 60, 90, 20, 255, 200]
-        thresh = cv2.inRange(frame_to_thresh, (v1_min, v2_min, v3_min), (v1_max, v2_max, v3_max))
+        # Morphological operations to clean up the mask
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-        # Apply morphological operations
-        kernel = np.ones((5, 5), np.uint8)
-        mask = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        # Find contours in the mask
+        contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Find contours
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Combine contours if necessary
+        combined_contours = combine_contours(contours)
 
-        min_contour_area = 2000  # Adjust this value as needed
-        largest_contour = None
-        largest_area = 0
+        # Get the largest contour
+        largest_contour = get_largest_contour(combined_contours)
 
-        # Identify the largest valid contour
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            if area > min_contour_area and area > largest_area:
-                largest_area = area
-                largest_contour = contour
-
-        # Draw a bounding box around the largest contour, if it exists
+        # Draw the largest contour if it exists
         if largest_contour is not None:
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            box_x = int(x + w / 2)
-            box_y = int(y + h / 2)
-
-            cv2.circle(frame, (box_x, box_y), 10, (0, 255, 0), -1)  # Draw a filled circle at the center
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle around the largest contour
-
-            left_band = self.capWidth_primary *0.3
-            right_band = self.capWidth_primary * 0.7
+            cv2.drawContours(frame, [largest_contour], -1, (0, 255, 0), 2)
             
-            
-            if box_x < left_band:
-                self.inCentre = VISION_X.box_left  # Left third
-            elif left_band <= box_x <= right_band:
-                self.inCentre = VISION_X.box_centre  # Middle third
-            else:
-                self.inCentre = VISION_X.box_right  # Right third
-        
-            vision_x = self.inCentre
-            # print(f"inCentre: {inCentre}")
+            # Calculate the center of the largest contour
+            M = cv2.moments(largest_contour)
+            if M["m00"] != 0:
+                box_x = int(M["m10"] / M["m00"])
+                box_y = int(M["m01"] / M["m00"])
+                # Draw a dot at the center
+                cv2.circle(frame, (box_x, box_y), 5, (0, 0, 255), -1)
+                left_band = self.capWidth_primary *0.3
+                right_band = self.capWidth_primary * 0.7
+                
 
-            top_band = self.capHeight_primary*0.5
-            if box_y < top_band:
-                vision_y = VISION_Y.box_not_close  # not close 
-            else:   
-                vision_y = VISION_Y.box_close  # close 
-            # Can also use area to decide if close or not?
+                
+                if box_x < left_band:
+                    self.inCentre = VISION_X.box_left  # Left third
+                    # print("LEFT")
+                elif left_band <= box_x <= right_band:
+                    self.inCentre = VISION_X.box_centre  # Middle third
+                    # print("MID")
+                else:
+                    self.inCentre = VISION_X.box_right  # Right third
+                    # print("RIGHT")
+            
+                vision_x = self.inCentre
+                # print(f"inCentre: {inCentre}")
+
+                top_band = self.capHeight_primary*0.5
+                if box_y < top_band:
+                    vision_y = VISION_Y.box_not_close  # not close 
+                    # print("NOT CLOSE")
+                else:   
+                    vision_y = VISION_Y.box_close  # close 
+                    # print("CLOSE")
+                # Can also use area to decide if close or not?
+
+
 
         return (vision_x, vision_y)
-        # return mask
     
 
     def close(self):

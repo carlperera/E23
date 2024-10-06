@@ -3,6 +3,8 @@ from enum import Enum, auto
 
 
 class State(Enum):
+
+    # <---------------------------- COLLECTION of balls ---------------------------->
     # Start States
     START_LEFT = auto()  # start on the left (facing 3 o'clock)
     START_RIGHT = auto()  # start on the right (facing 9 o'clock)
@@ -16,8 +18,7 @@ class State(Enum):
     ROTATING_FACE_CENTRE_START_RIGHT = auto() 
     
     # if no ball/box found whilst rotating at start -> facing start now -> move to centre
-    MOVE_TO_CENTRE_BALL = auto() 
-    MOVE_TO_CENTRE_BOX = auto()
+    MOVE_TO_CENTRE_BALL = auto()
 
     # Rotating to face centre
     ROTATE_FACE_CENTRE_BALL = auto()
@@ -35,41 +36,25 @@ class State(Enum):
     # Secondary camera
     ROTATE_LEFT_TARGET_SECONDARY = auto()  # secondary - ball is left
     ROTATE_RIGHT_TARGET_SECONDARY = auto()  # secondary - ball is right
-    MOVE_TO_TARGET_SECONDARY = auto()
+    MOVE_TO_TARGET_SECONDARY = auto()    # if close -> actuate the servo, stops the state machine to actuate claw, then lower it down
     
-    # Pickup Sequence
-    PICKUP_BALL = auto()  # actuate the servo, stops the state machine to actuate claw, then lower it down
-
-    # Rotating in secondary camera
-    # ROTATE_EXPLORE_FULL_SECONDARY = auto()  # rotate 360 in secondary camera, if the ball has disappeared from view
-    
+    # exploring in secondary camera
     ROTATE_EXPLORE_FULL_SECONDARY_PART_1 = auto()
     ROTATE_EXPLORE_FULL_SECONDARY_PART_2 = auto()
 
-    ROTATE_EXPLORE = auto()  # rotate in place 360 to find a ball if exists 
-
-
-
-   
-
-    # Delivery
-    BOX_DETECT_START = auto()  # rotate in place 360 to see the box (at any (x,y) pos)
-    ROTATE_FACE_CENTRE_BOX = auto()
-
+    # <---------------------------- DELIVERY of balls ---------------------------->
+    # Disposal of balls (delivery stage)
     ROTATE_LEFT_BOX = auto()
     ROTATE_RIGHT_BOX = auto()
     MOVE_TO_BOX = auto()
-
     CLOSE_TO_BOX = auto()
-    TURN_BACK_TO_BOX = auto()
-    REVERSE_TO_BOX = auto()
 
+    ROTATE_FACE_CENTRE_BOX = auto()
+    MOVE_TO_CENTRE_BOX = auto()
+    
     # if at centre 
     ROTATE_EXPLORE_BOX_PART_1 = auto()
     ROTATE_EXPLORE_BOX_PART_2 = auto()
-
-    FLAP_SEQUENCE = auto()  # open the flap to let balls out into the collection box, then close the flap 
-   
 
     @property
     def is_ball_state(self):
@@ -78,17 +63,13 @@ class State(Enum):
     @property
     def is_box_state(self):
         return self in frozenset((
-            State.BOX_DETECT_START, 
             State.ROTATE_FACE_CENTRE_BOX,
             State.ROTATE_LEFT_BOX,
             State.ROTATE_RIGHT_BOX,
             State.MOVE_TO_BOX, 
             State.CLOSE_TO_BOX,
-            State.TURN_BACK_TO_BOX,
-            State.REVERSE_TO_BOX,
             State.ROTATE_EXPLORE_BOX_PART_1,
             State.ROTATE_EXPLORE_BOX_PART_2,
-            State.FLAP_SEQUENCE,
     ))
 
     @property

@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 
 if __name__ == '__main__':
     try:
+        GPIO.setmode(GPIO.BCM)
         ultrasonic = Ultrasonic()
         while True:
             dist = ultrasonic.averaged_distance(numReadings=5)

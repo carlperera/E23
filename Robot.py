@@ -10,6 +10,7 @@ from enum import Enum, auto
 
 from Vision import VISION_X, VISION_Y
 from Ultrasonic import Ultrasonic
+from LimitSwitch import LimitSwitch
 
 WHEEL_SEP = 238/1000    # previously 227/1000  
 WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000 
@@ -35,12 +36,15 @@ class Constants(Enum):
     rotate = 3 / 100
     forward =  0 # 4.282 / 100
     backward = 4.282 / 100
-    tray_ball_threshold = 4
+    tray_ball_threshold = 2 # current balls in tray before searching for the box
     simulation_duration_s = 10*60
+
+    ultrasonic_collection_box_threshold = 12 # in cm 
+    
 
 class SPEED(Enum):
     moving_to_target = 0.7
-    rotating_explore = 0.3
+    rotating_explore = 0.25
     close_to_target = 0.4
     rotate_to_target = 0.2
     return_rotate = 0.7
@@ -52,6 +56,8 @@ class SPEED(Enum):
     move_to_target_secondary = 0.2
     close_to_target_secondary = 0.2
     rotating_explore_secondary = 0.2
+
+    rotate_to_face_away_from_box = 0.4
 
 class PINSMOTOR(Enum):
     PIN_MOTOR1_IN1 =         17
@@ -80,6 +86,12 @@ class CAMERA_NUM(Enum):
 class SERVO_PINS(Enum):
     PIN_FLAP_PWM = 12
     PIN_CLAW_PWM = 13
+
+
+class DISTANCE_CONSTANT(Enum):
+    dist_move_away_from_collection_tray_post_delivery = 0.8 # metres
+
+
 
 """
 Dimension of standard singles court (not including the left and right outer edges) is 
@@ -153,7 +165,7 @@ class Robot:
         self.rear_sensor = Ultrasonic()
         
         # ----------------  BALLS - TRAY ----------------
-        self.tray_ball_threshold = Constants.tray_ball_threshold # number of balls in robot tray at which point robot goes to collection box
+        self.tray_ball_threshold = Constants.tray_ball_threshold.value # number of balls in robot tray at which point robot goes to collection box
 
         # ---------------- DEPOSIT BALLS 
 
@@ -177,7 +189,10 @@ class Robot:
 
 
     # ------------------------------ BASIC OPERATIONS -------------------
-  
+    
+    def increment_balls_in_tray(self):
+        self.balls_in_tray += 1
+
     def shutdown(self):
         self.vision.close()
 
@@ -279,8 +294,8 @@ class Robot:
         return 2*math.pi*self.wheel_radius*wheel_rotatations_per_step
 
     
-    def ball_threshold_reached(self):
-        return self.balls_in_tray >= self.ball_threshold_reached
+    def check_ball_threshold_reached(self):
+        return self.balls_in_tray >= self.tray_ball_threshold
 
     def turn_off_all(self):
         self.motor1_pwm.off()
@@ -427,6 +442,21 @@ class Robot:
 
         self.update_position(dist_travelled)
 
+        self.reset_encoders()
+
+
+    def stop_backward(self):
+        self.motor1_in2.off()
+        self.motor2_in2.off()
+
+        motor1_steps = self.motor1_encoder.steps
+        motor2_steps = self.motor2_encoder.steps
+
+        dist_raw = self.encoder_steps_to_dist(max(motor1_steps, motor2_steps))
+        dist_travelled = self.dist_scale_up(dist_raw)
+        self.update_position(dist_travelled)
+
+        # reset the encoders
         self.reset_encoders()
 
     def update_position(self, dist_travelled):
@@ -1150,7 +1180,6 @@ class Robot:
 
         motor1_steps = self.motor1_encoder.steps
         motor2_steps = self.motor2_encoder.steps
-
         print(f"motor1 steps = {motor1_steps} --- motor2_steps = {motor2_steps}")
         angle_deg = self.encoder_steps_to_angle(max(motor1_steps, motor2_steps))
         angle_rotated = self.convert_encoder_angle_to_actual_angle(angle_deg, rotating_direction)
@@ -1246,10 +1275,8 @@ class Robot:
 
 
         # ---------------------------------  DECIDE: use PRIMARY or SECONDARY camera?  ---------------------------------
-
-            
-        if self.state.is_secondary_state:
-            print("YESSSSS")
+        in_secondary_state = self.state.is_secondary_state
+        if in_secondary_state:
             camNum = 2 
         else:
             camNum = 1
@@ -1335,7 +1362,7 @@ class Robot:
                     case _: # no ball detected in frame 
                         # check if rotated to 90 degrees already
 
-                        if self.check_rotated_90_at_start():
+                        if self.check_angle_rotate_no_update() >= 90:
                             self.stop_clockwise()
                             self.start_anticlockwise(speed = SPEED.rotating_explore.value) # rotate to face the centre
                             self.state = State.ROTATING_FACE_CENTRE_START_LEFT 
@@ -1362,9 +1389,9 @@ class Robot:
                         self.state = State.ROTATE_RIGHT_TARGET
                     case _: # no ball detected in frame 
                         # check if rotated to 90 degrees already 
-                        if self.check_rotated_90_at_start():
+                        if self.check_angle_rotate_no_update() >= 90:
                             self.stop_anticlockwise()
-                            self.start_clockwise() # rotate to face the centre
+                            self.start_clockwise(speed = SPEED.rotating_explore.value) # rotate to face the centre
                             self.state = State.ROTATING_FACE_CENTRE_START_RIGHT # TODO: could merge this with the ROTATE_FACE_CENTRE_BALL state?
                         else:
                             pass # keep rotating  
@@ -1379,7 +1406,7 @@ class Robot:
                     pass # keep rotating 
 
             case State.ROTATING_FACE_CENTRE_START_RIGHT:
-                if self.update_and_get_orientation() <= 135:
+                if self.check_rotated_45():
                     self.stop_clockwise()
                     self.start_forward(speed=SPEED.moving_to_centre.value)
                     self.state = State.MOVE_TO_CENTRE_BALL
@@ -1428,12 +1455,13 @@ class Robot:
                             self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
                             self.state = State.ROTATE_LEFT_TARGET 
                         case VISION_X.ball_centre:
-                            self.stop_anticlockwise() # stop rotating
                             
                             if vision_y == VISION_Y.ball_close: # close ->
-                                self.start_forward(SPEED.close_to_target.value)
-                                self.state = State.CLOSE_TO_TARGET
+                                self.stop_anticlockwise() # stop rotating
+                                self.start_forward(SPEED.moving_to_target.value)
+                                self.state = State.MOVE_TO_TARGET
                             else: # not close 
+                                self.stop_anticlockwise() # stop rotating
                                 self.start_forward(SPEED.moving_to_target.value)
                                 self.state = State.MOVE_TO_TARGET
                         case VISION_X.ball_right: # to the right 
@@ -1572,8 +1600,8 @@ class Robot:
                         pass
                     case _: # the ball has left the frame 
                         self.stop_clockwise()
-                        self.start_anticlockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+                        self.start_anticlockwise(SPEED.rotating_explore.value)
+                        self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
 
 
             case State.ROTATE_LEFT_TARGET:
@@ -1597,7 +1625,7 @@ class Robot:
                     case _: # the ball has left the frame 
                         self.stop_anticlockwise()
                         self.start_anticlockwise(SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+                        self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
 
             case State.MOVE_TO_TARGET:
                 match vision_x:
@@ -1691,9 +1719,13 @@ class Robot:
                             # ----------> COLLECT the ball here <----------
                             claw = Claw()
                             claw.collect_ball()    
+                            claw.close() # just in case?
                             del claw
 
-                            if self.ball_threshold_reached():  # we need to deposit the balls (i.e find the box) -> switch back to secondary
+                            # increment number of balls in tray
+                            self.increment_balls_in_tray()
+
+                            if self.check_ball_threshold_reached():  # we need to deposit the balls (i.e find the box) -> switch back to secondary
                                 self.stop_forward()
                                 self.start_anticlockwise(speed = SPEED.rotating_explore.value)
                                 self.state = State.ROTATE_EXPLORE_BOX_PART_1
@@ -1701,7 +1733,7 @@ class Robot:
                             else:            # otherwise look for next ball
                                 self.stop_forward()
                                 self.start_anticlockwise(speed = SPEED.rotating_explore.value)
-                                self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1 # TODO: if we fail to find a ball with primary -> then switch to secondary again?
+                                self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1 # TODO: if we fail to find a ball with primary -> then switch to secondary again? or just move a certain distance 
 
                         else: # not close 
                             #  RuntimeError(f"ERROR: vision_x = {vision_x} but vision_y = {vision_y}")
@@ -1776,7 +1808,7 @@ class Robot:
                         if self.check_angle_rotate_no_update() >= 180:  # check if already spun 360 
                             self.stop_anticlockwise()
                             # second part of the full 360
-                            self.start_anticlockwise(speed = SPEED.rotating_explore_secondary.value)
+                            self.start_anticlockwise(speed = SPEED.rotating_explore.value)
                             self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1 # switch back to primary camera
 
             # -------------------------  FIND BOX -------------------------
@@ -1841,12 +1873,13 @@ class Robot:
                         self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX 
                     case VISION_X.box_centre:
-                        self.stop_anticlockwise() # stop rotating
                         
                         if vision_y == VISION_Y.box_close: # close 
+                            self.stop_anticlockwise() # stop rotating
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
+                            self.stop_anticlockwise() # stop rotating
                             self.start_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_BOX
                     case VISION_X.box_right: # to the right 
@@ -1854,11 +1887,11 @@ class Robot:
                         self.start_clockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_RIGHT_BOX 
                     case _: # nothing detected
-                        if self.check_rotated_by_angle(180):  # check if already spun 360 
+                        if self.check_angle_rotate_no_update() >= 180:
                             self.stop_anticlockwise()
 
                             # second part of the full 360
-                            self.start_anticlockwise()
+                            self.start_anticlockwise(speed = SPEED.rotating_explore.value)
                             self.state = State.ROTATE_EXPLORE_BOX_PART_2
 
             case State.ROTATE_EXPLORE_BOX_PART_2:
@@ -1868,7 +1901,7 @@ class Robot:
                         # keep spinning 
                         self.stop_anticlockwise()
                         self.start_anticlockwise(speed=SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_LEFT_TARGET 
+                        self.state = State.ROTATE_LEFT_BOX 
                     case VISION_X.box_centre:
                         self.stop_anticlockwise() # stop rotating
 
@@ -1884,7 +1917,7 @@ class Robot:
                         self.state = State.ROTATE_RIGHT_TARGET 
                     case _: # nothing detected
                         # check if already spun 360 
-                        if self.check_rotated_by_angle(180):
+                        if self.check_angle_rotate_no_update() >= 180:
                             self.stop_anticlockwise()
 
                             # since no ball spotted, rotate to face the centre and move to it(maximise vision)
@@ -2013,7 +2046,8 @@ class Robot:
                     case _: # the ball has left the frame 
                         self.stop_anticlockwise()
                         self.start_anticlockwise(SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+                        self.state = State.ROTATE_EXPLORE_BOX_PART_1
+
             case State.MOVE_TO_BOX:
                 match vision_x:
                     case VISION_X.box_left:  # ball to the left so so readjust 
@@ -2026,7 +2060,9 @@ class Robot:
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
-                            self.start_forward(SPEED.close_to_target.value)
+                            self.stop_forward() #stop moving first
+                            self.start_forward(SPEED.moving_to_target.value)
+                            self.state = State.MOVE_TO_BOX
                     case VISION_X.box_right:  # ball to right of the frame, stop moving to readjust    
                         self.stop_forward()
                         self.start_clockwise(speed=SPEED.rotate_to_target.value)
@@ -2034,7 +2070,7 @@ class Robot:
                     case _: # the ball has left the frame 
                         self.stop_forward()
                         self.start_anticlockwise(speed = SPEED.rotating_explore.value)
-                        self.state = State.ROTATING_START_RIGHT_EXPLORE
+                        self.state = State.ROTATE_EXPLORE_BOX_PART_1
 
             case State.ROTATE_RIGHT_BOX:
                 match vision_x:
@@ -2043,69 +2079,97 @@ class Robot:
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX
                     case VISION_X.box_centre: # ball in centre of frame so start moving forward
-                        self.stop_anticlockwise()
-                        if vision_y == 1: # close 
+                        if vision_y == VISION_Y.box_close: # close 
+                            self.stop_anticlockwise()
                             self.start_forward(SPEED.close_to_target.value)
                             self.state = State.CLOSE_TO_BOX
                         else: # not close 
+                            self.stop_anticlockwise()
                             self.start_forward(SPEED.moving_to_target.value)
                             self.state = State.MOVE_TO_BOX
                     case VISION_X.box_right:  # ball to right of the frame, keep rotating clockwise     
-                        pass
+                        pass # keep rotating right
                     case _: # the ball has left the frame 
                             self.stop_clockwise()
-                            self.start_anticlockwise(SPEED.rotate_to_target.value)
-                            self.state = State.ROTATING_START_RIGHT_EXPLORE
+                            self.start_anticlockwise(SPEED.rotating_explore.value)
+                            self.state = State.ROTATE_EXPLORE_BOX_PART_1
             
             case State.CLOSE_TO_BOX:
-                calc_dist_moved = self.get_dist_moved()
-                print(f"dist_moved = {calc_dist_moved}")
-
-                distance_moved = calc_dist_moved 
-
-                # dist_to_move = self.calibrated_close_dist +  self.close_to_target_calibration
-                dist_to_move = 55/100 
-                print(f"dist_to_move = {dist_to_move}")
 
                 match vision_x:
                     case VISION_X.box_left: 
                         self.stop_forward()
                         self.start_anticlockwise(SPEED.rotate_to_target.value)
                         self.state = State.ROTATE_LEFT_BOX
+
                     case VISION_X.box_centre: # ball in centre of frame so keep moving forward
+                        
+                        self.stop_forward()
 
-                        if distance_moved >= dist_to_move: # TODO: check this 
-                            self.stop_forward()
+                        # <-rotate to face the back to the box
+                        self.rotate(-180, speed = SPEED.rotate_to_face_away_from_box.value)
 
-                            # rotate to face the box -> then after go back 
-                            self.rotate(-180, speed = 0.5)
+                        """START Ultrasonic Code """
+                        # start the ultrasonic instance (delete it after use - otherwise we use up background computational energy + battery)
+                        ultrasonic = Ultrasonic()
 
-                            # reverse back the calibrated distance # TODO: do we get deducted marks if we hit the box and "move it"
-                            self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
+                        dist = ultrasonic.averaged_distance(numReadings=5) # initial distance reading 
+                        print("<=== Ultrasonic distance = %.2f cm" % dist)
+                        # while we are no in reach of the collection box -> reverse back the calibrated distance # TODO: do we get deducted marks if we hit the box and "move it"
+                        self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
+                        while dist >= Constants.ultrasonic_collection_box_threshold.value: # keep moving backward until we get close enough to the box
+                            # keep moving backward
+                            dist = ultrasonic.averaged_distance(numReadings=5)
+                            print("<=== Ultrasonic distance = %.2f cm" % dist)
+                        
+                        self.stop_backward()
+                        
+                        del ultrasonic
 
-                            # <======== deposit the balls =====>
-                            flap = Flap()
+                        """END Ultrasonic Code """
 
-                            flap.deposit_balls()  # UNCOMMENT THIS WHEN FLAP WORKING
-                            del flap
 
-                            # after depositing the balls - move forward a bit, then go into the box detect 
-                            self.start_forward(distance=self.calibrated_reverse_dist, speed = SPEED.moving_to_centre.value)
-                            self.start_anticlockwise(speed = SPEED.rotating_explore.value)
-                            self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
+                        # """START Limit Switch Code """
+                        # limit_switch = LimitSwitch()
 
-                        else:
-                            pass
+                        # is_limit_switch_pressed = limit_switch.check_being_pressed() # initial value
+                    
+                        # while not is_limit_switch_pressed:
+                        #     # get latest data
+                        #     is_limit_switch_pressed = limit_switch.check_being_pressed()
+
+                        #     # keep reversing to get closer to the collection box
+                        #     # TODO: check for timeout (if timed out we go back to exploring box part 1)
+                        #     pass
+                        
+                        # # the limit_switch has been pressed
+                        
+                        # """END Limit Switch Code """
+
+                        # <======== deposit the balls =====>
+                        flap = Flap()
+
+                        flap.deposit_balls()  
+                        flap.close() # redo it just to get it back to original positio
+                        del flap
+
+                        # reset balls in tray
+                        self.reset_balls_in_collection_tray()
+
+                        # after depositing the balls - move forward a bit, then go into the box detect 
+                        self.move_forward(distance=DISTANCE_CONSTANT.dist_move_away_from_collection_tray_post_delivery.value, speed = SPEED.moving_to_centre.value)
+                        self.start_anticlockwise(speed = SPEED.rotating_explore.value)
+                        self.state = State.ROTATE_EXPLORE_FULL_PRIMARY_PART_1
+                        
                     case VISION_X.box_right:  # ball to right of the frame, keep rotating clockwise     
                         self.stop_forward()
-                        self.start_anticlockwise(SPEED.rotate_to_target.value)
-                        self.state = State.ROTATE_LEFT_BOX
+                        self.start_clockwise(SPEED.rotate_to_target.value)
+                        self.state = State.ROTATE_RIGHT_BOX
                     case _: # the box has left the frame 
                         self.stop_forward()
                         self.start_anticlockwise(speed = SPEED.rotating_explore.value)
                         self.state = State.ROTATE_EXPLORE_BOX_PART_1
         
-    
 
             
         # print(f"old state = {old_state.name} --- new-state = {self.state.name}")

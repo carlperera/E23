@@ -72,7 +72,9 @@ if __name__ == "__main__":
     while True: # for each frame from camera 
         try:
             # get latest frame
-            
+            """ TODO: use both frames (both primary and secondary)-> why?:
+                given a demonstrator could put the ball in the FOV (field of view) of the secondary camera whilst we're still in a primary camera state (which means we miss it) 
+            """
             if robot.state.is_secondary_state:
                 ret, frame = vision.camera_secondary.read()
             else:
@@ -88,9 +90,9 @@ if __name__ == "__main__":
                 robot.shutdown()
                 break
 
-            # cv2.imshow('Live feed',frame)
-            # if cv2.waitKey(1) & 0xFF is ord('q'):
-            #     break
+            cv2.imshow('Live feed',frame)
+            if cv2.waitKey(1) & 0xFF is ord('q'):
+                break
 
             
             robot.handle_state(frame)

@@ -28,12 +28,13 @@ while True: # for each frame from camera
         # if curr_state == "2":
             # ret, frame = vision.camera_secondary.read()
         # else:
-        ret, frame = vision.camera_secondary.read()
-        
 
-        vision_x, vision_y = vision.track_ball(frame, 2)
+        ret, frame = vision.camera_primary.read()
+        # vision_x, vision_y = vision.track_ball(frame, 2)
 
-        # vis_x, vis_y = vision.box_detect(frame)
+
+        vis_x, vis_y, mask = vision.box_detect(frame)
+        print(vis_x, vis_y)
         
         
         if not ret:
@@ -44,6 +45,7 @@ while True: # for each frame from camera
         # cv2.imshow("Webcam", frame)
         # cv2.imshow("Banchod detect", banchod_out)
         cv2.imshow("Cam", frame)
+        cv2.imshow("Mask", mask)
         
         
     

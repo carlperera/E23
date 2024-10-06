@@ -217,7 +217,7 @@ class Claw:
 
     def collect_ball(self):
         self.open()
-        sleep(2)
+        sleep(1)
         self.close()
         
         
