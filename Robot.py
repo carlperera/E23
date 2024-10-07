@@ -36,10 +36,10 @@ class Constants(Enum):
     rotate = 3 / 100
     forward =  0 # 4.282 / 100
     backward = 4.282 / 100
-    tray_ball_threshold = 2 # current balls in tray before searching for the box
+    tray_ball_threshold = 3 # current balls in tray before searching for the box
     simulation_duration_s = 10*60
 
-    ultrasonic_collection_box_threshold = 12 # in cm 
+    ultrasonic_collection_box_threshold = 15 # in cm 
     
 
 class SPEED(Enum):
