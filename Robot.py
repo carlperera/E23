@@ -2144,51 +2144,52 @@ class Robot:
                         """END Ultrasonic Code """
 
 
-                        """START Limit Switch Code """
-                        # initialise limit switch 
-                        left_switch = LimitSwitch()
-                        right_switch = LimitSwitch()
+                        # """START Limit Switch Code """
+                        # # initialise limit switch 
+                        # left_switch = LimitSwitch()
+                        # right_switch = LimitSwitch()
 
-                        # initial value
-                        left_switch_pressed = left_switch.check_being_pressed() 
-                        right_switch_pressed = right_switch.check_being_pressed()
+                        # # initial value
+                        # left_switch_pressed = left_switch.check_being_pressed() 
+                        # right_switch_pressed = right_switch.check_being_pressed()
                         
-                        limit_switch_cond = False
+                        # limit_switch_cond = False
 
-                        # start moving backward
-                        self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
+                        # # start moving backward
+                        # self.start_backward(speed = SPEED.retreat_back.value)
                         
-                        # condition: not limit switches being pressed 
-                        while not limit_switch_cond:
+                        # # condition: not limit switches being pressed 
+                        # while not limit_switch_cond:
 
-                            if left_switch_pressed and right_switch_pressed:
-                                limit_switch_cond = True
-                                break
+                        #     if left_switch_pressed and right_switch_pressed:
+                        #         limit_switch_cond = True
+                        #         break
 
-                            if left_switch_pressed: 
-                                self.stop_backward()
-                                # move forward a little bit -> rotate clockwise slightly -> then reverse back
-                                self.move_forward(distance= Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)
-                                self.rotate_clockwise(angle = ANGLES.rotate_collection_box_clockwise_degrees, speed = SPEED.rotate_to_adjust_box.value )
-                                self.start_backward()
+                        #     if left_switch_pressed: 
+                        #         self.stop_backward()
+                        #         # move forward a little bit -> rotate clockwise slightly -> then reverse back
+                        #         self.move_forward(distance= Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value) # TODO: change the values in here - calibrate
+                        #         self.rotate_clockwise(angle = ANGLES.rotate_collection_box_clockwise_degrees, speed = SPEED.rotate_to_adjust_box.value ) 
+                        #         self.start_backward(speed = SPEED.retreat_back.value)
 
-                            if right_switch_pressed:
-                                self.stop_backward()
-                                # move forward a little bit -> rotate anticlockwise slightly -> then reverse back
-                                self.move_forward(distance=Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)
-                                self.rotate_anticlockwise(angle = ANGLES.rotate_collection_box_anticlockwise_degrees, speed = SPEED.rotate_to_adjust_box.value)
-                                self.start_backward()
+                        #     if right_switch_pressed:
+                        #         self.stop_backward()
+                        #         # move forward a little bit -> rotate anticlockwise slightly -> then reverse back
+                        #         self.move_forward(distance=Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)  # TODO: change the values in here - calibrate
+                        #         self.rotate_anticlockwise(angle = ANGLES.rotate_collection_box_anticlockwise_degrees, speed = SPEED.rotate_to_adjust_box.value)
+                        #         self.start_backward(speed = SPEED.retreat_back.value)
                                 
-                            # get latest data for next iteration of loop
-                            left_switch_pressed = left_switch.check_being_pressed() 
-                            right_switch_pressed = right_switch.check_being_pressed()
+                        #     # get latest data for next iteration of loop
+                        #     left_switch_pressed = left_switch.check_being_pressed() 
+                        #     right_switch_pressed = right_switch.check_being_pressed()
                         
-                        # the limit_switch has been pressed
-                        
+                        # # the limit_switch has been pressed
+
+                        # del limit_switch_left
+                        # del limit_switch_right
                         """END Limit Switch Code """
 
-                        del limit_switch_left
-                        del limit_switch_right
+            
                         # <======== deposit the balls =====>
                         flap = Flap()
 
