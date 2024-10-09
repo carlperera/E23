@@ -259,7 +259,7 @@ class Vision:
         
         """
 
-        def combine_contours(contours, threshold=50, min_area = 500):
+        def combine_contours(contours, threshold=100, min_area = 500):
             combined = []
             
             for cnt in contours:
@@ -291,8 +291,14 @@ class Vision:
             if not contours:
                 return None
             return max(contours, key=cv2.contourArea)
+        
         vision_x = VISION_X.no_box_detected # Default to box not being close
         vision_y = VISION_Y.no_box_detected
+
+        # # Crop the frame to the bottom 80%
+        # height, width = frame.shape[:2]
+        # cropped_frame = frame[int(height * 0.2):, :]
+
         # Convert to HSV color space
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -351,7 +357,7 @@ class Vision:
                     vision_y = VISION_Y.box_close  # close 
                     # print("CLOSE")
                 # Can also use area to decide if close or not?
-                # cv2.imshow("Cam", frame)
+
 
 
         return (vision_x, vision_y, mask)

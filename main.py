@@ -84,11 +84,7 @@ if __name__ == "__main__":
                 print("error")
                 break
             # cv2.imshow("Webcam", frame)
-            # ---------------------------- END SIMULATION ----------------------------
-            if time.time() - time_start > simulation_time_s: 
-                print("SIMULATION TIME REACHED: stopped the robot)")
-                robot.shutdown()
-                break
+            # ---------------------------- END SIMULATION ---------------------------
 
             cv2.imshow('Live feed',frame)
             if cv2.waitKey(1) & 0xFF is ord('q'):

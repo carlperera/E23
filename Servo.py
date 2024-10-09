@@ -123,12 +123,12 @@ class Flap:
 
     def open(self):
         # self.setAngle(0, self.pwm2) # TODO: Make servo 1 go back to starting pos
-        self.setAngle(20, self.pwm1) # TODO: Make servo 2 go to 180 degrees
+        self.setAngle(45, self.pwm1) # TODO: Make servo 2 go to 180 degrees
 
     
     def close(self):
         
-        angle = 20  # TODO: change this 
+        angle = 45  # TODO: change this 
 
         while angle < 110: # TODO: change this 
             

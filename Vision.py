@@ -366,11 +366,16 @@ class Vision:
         
         vision_x = VISION_X.no_box_detected # Default to box not being close
         vision_y = VISION_Y.no_box_detected
+
+        # # Crop the frame to the bottom 80%
+        # height, width = frame.shape[:2]
+        # cropped_frame = frame[int(height * 0.2):, :]
+
         # Convert to HSV color space
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
         # Define the range for brown color
-        lower_brown = np.array([4, 30, 75])  # Adjust as needed
+        lower_brown = np.array([8, 30, 75])  # Adjust as needed
         upper_brown = np.array([20, 150, 190])
         mask = cv2.inRange(hsv, lower_brown, upper_brown)
 
@@ -416,7 +421,7 @@ class Vision:
                 vision_x = self.inCentre
                 # print(f"inCentre: {inCentre}")
 
-                top_band = self.capHeight_primary*0.35
+                top_band = self.capHeight_primary*0.5
                 if box_y < top_band:
                     vision_y = VISION_Y.box_not_close  # not close 
                     # print("NOT CLOSE")

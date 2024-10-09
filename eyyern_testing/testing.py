@@ -30,7 +30,7 @@ while True: # for each frame from camera
         # else:
 
         ret, frame = vision.camera_primary.read()
-        # vision_x, vision_y = vision.track_ball(frame, 2)
+        # vision_x, vision_y = vision.track_ball(frame, 1)
 
 
         vis_x, vis_y, mask = vision.box_detect(frame)

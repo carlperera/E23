@@ -1,7 +1,7 @@
 import cv2
 
 # Capture video from the default camera (usually the webcam)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(2)
 
 if not cap.isOpened():
     print("Error: Could not open video source.")

@@ -20,6 +20,9 @@ class Ultrasonic:
         time.sleep(delay)
         GPIO.output(self.trigPin, False)
 
+        # intial value for start time and end time 
+        startTime = time.monotonic_ns()
+        stopTime = time.monotonic_ns()
         while GPIO.input(self.echoPin) == 0:
             startTime = time.monotonic_ns()
         while GPIO.input(self.echoPin) == 1:

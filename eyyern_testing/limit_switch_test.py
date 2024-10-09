@@ -1,37 +1,19 @@
 import RPi.GPIO as GPIO
 import time
 
-# Set the GPIO mode to BCM or BOARD (BCM is recommended)
-GPIO.setmode(GPIO.BCM)
-
-# Define the GPIO pin number
-input_pin = 8  # Trig PIN
-
-# Set the input pin to be an input
-GPIO.setup(input_pin, GPIO.IN)
-
-
+# Set up the GPIO mode and pin
+GPIO.setmode(GPIO.BCM)  # Use physical pin numbers
+GPIO.setup(8, GPIO.IN)  # Use internal pull-down resistor
+GPIO.setup(7, GPIO.IN)
 
 try:
-    # Continuously read the state of the input pin
     while True:
-        # Read the state of the input pin (HIGH or LOW)
-        input_state = GPIO.input(input_pin)
-        
-        if input_state == GPIO.HIGH:
-            print("GPIO pin is HIGH")
+        if GPIO.input(8) == GPIO.HIGH or GPIO.input(7) == GPIO.HIGH:
+            print("Switch Pressed (High)")
         else:
-            print("GPIO pin is LOW")
-        
-        # Sleep for a short time to avoid excessive CPU usage (e.g., 0.1 seconds)
+            print("Switch Released (Low)")
         time.sleep(0.1)
 
 except KeyboardInterrupt:
-    print("Program terminated by user.")
-
-finally:
-    # Clean up GPIO settings when the program is stopped
-    GPIO.cleanup()
-
-# Clean up GPIO settings
-GPIO.cleanup()
+    print("Program stopped.")
+    GPIO.cleanup()  # Clean up GPIO settings when exiting

@@ -10,7 +10,7 @@ from enum import Enum, auto
 
 from Vision import VISION_X, VISION_Y
 from Ultrasonic import Ultrasonic
-from LimitSwitch import LimitSwitch
+from LimitSwitch import LimitSwitch, LIMIT_SWITCH_PINS
 
 WHEEL_SEP = 238/1000    # previously 227/1000  
 WHEEL_RAD = 99.88/1000    #  preciously 61/2/1000 
@@ -2117,78 +2117,89 @@ class Robot:
 
                     case VISION_X.box_centre: # ball in centre of frame so keep moving forward
 
-                        # TODO: the robot is moving too close to teh collection box before rotating (often leads to kknocking the box out)
-                        # sol to above: increase the x bounds for the box being considered box?
                         self.stop_forward()
 
                         # <-rotate to face the back to the box
                         self.rotate(-180, speed = SPEED.rotate_to_face_away_from_box.value)
 
-                        """START Ultrasonic Code """
-                        # start the ultrasonic instance (delete it after use - otherwise we use up background computational energy + battery)
-                        ultrasonic = Ultrasonic()
+                        true_if_using_ultrasonic_false_if_limit_switch = True
 
-                        dist = ultrasonic.averaged_distance(numReadings=5) # initial distance reading 
-                        print("<=== Ultrasonic distance = %.2f cm" % dist)
-                        # while we are no in reach of the collection box 
-                        self.start_backward(speed = SPEED.retreat_back.value)
-                        while dist >= Constants.ultrasonic_collection_box_threshold.value: # keep moving backward until we get close enough to the box
-                            # keep moving backward
-                            dist = ultrasonic.averaged_distance(numReadings=5)
+                        if true_if_using_ultrasonic_false_if_limit_switch:
+
+                            """START Ultrasonic Code """
+                            # start the ultrasonic instance (delete it after use - otherwise we use up background computational energy + battery)
+                            ultrasonic = Ultrasonic()
+
+                            dist = ultrasonic.averaged_distance(numReadings=5) # initial distance reading 
                             print("<=== Ultrasonic distance = %.2f cm" % dist)
-                        
-                        self.stop_backward()
-                        
-                        del ultrasonic
+                            # while we are no in reach of the collection box 
+                            self.start_backward(speed = SPEED.retreat_back.value)
+                            while dist >= Constants.ultrasonic_collection_box_threshold.value: # keep moving backward until we get close enough to the box
+                                # keep moving backward
+                                dist = ultrasonic.averaged_distance(numReadings=5)
+                                print("<=== Ultrasonic distance = %.2f cm" % dist)
+                            
+                            self.stop_backward()
+                            
+                            del ultrasonic
 
-                        """END Ultrasonic Code """
+                        else:
+
+                            # start moving backward
+                            self.move_backward(distance=self.calibrated_reverse_dist, speed = SPEED.retreat_back.value)
+                            
+                            """START Limit Switch Code """
+                            # initialise limit switch 
+                            GPIO.setup(LIMIT_SWITCH_PINS.left_pin.value, GPIO.IN)  # Use internal pull-down resistor
+                            GPIO.setup(LIMIT_SWITCH_PINS.right_pin.value, GPIO.IN)
+
+                            while True: # keep reversing until one of the limit switches is triggered
+                                if GPIO.input(LIMIT_SWITCH_PINS.left_pin.value) == GPIO.HIGH or GPIO.input(LIMIT_SWITCH_PINS.right_pin.value) == GPIO.HIGH:
+                                    print("Switch Pressed (High)")
+                                    break # break out of the looop
 
 
-                        # """START Limit Switch Code """
-                        # # initialise limit switch 
-                        # left_switch = LimitSwitch()
-                        # right_switch = LimitSwitch()
+                            """
+                            START - limit switch with differential limit switches (adjust to the left or right) -> TODO: later
+                            """
+                            # left_switch = LimitSwitch()
+                            # right_switch = LimitSwitch()
 
-                        # # initial value
-                        # left_switch_pressed = left_switch.check_being_pressed() 
-                        # right_switch_pressed = right_switch.check_being_pressed()
-                        
-                        # limit_switch_cond = False
+                            # # initial value
+                            # left_switch_pressed = left_switch.check_being_pressed() 
+                            # right_switch_pressed = right_switch.check_being_pressed()
 
-                        # # start moving backward
-                        # self.start_backward(speed = SPEED.retreat_back.value)
-                        
-                        # # condition: not limit switches being pressed 
-                        # while not limit_switch_cond:
+    
+                            # # condition: not limit switches being pressed 
+                            # while True:
 
-                        #     if left_switch_pressed and right_switch_pressed:
-                        #         limit_switch_cond = True
-                        #         break
+                            #     if left_switch_pressed and right_switch_pressed:
+                            #         break
 
-                        #     if left_switch_pressed: 
-                        #         self.stop_backward()
-                        #         # move forward a little bit -> rotate clockwise slightly -> then reverse back
-                        #         self.move_forward(distance= Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value) # TODO: change the values in here - calibrate
-                        #         self.rotate_clockwise(angle = ANGLES.rotate_collection_box_clockwise_degrees, speed = SPEED.rotate_to_adjust_box.value ) 
-                        #         self.start_backward(speed = SPEED.retreat_back.value)
+                            #     if left_switch_pressed: 
+                            #         self.stop_backward()
+                            #         # move forward a little bit -> rotate clockwise slightly -> then reverse back
+                            #         self.move_forward(distance= Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)
+                            #         self.rotate_clockwise(angle = ANGLES.rotate_collection_box_clockwise_degrees, speed = SPEED.rotate_to_adjust_box.value )
+                            #         self.start_backward()
 
-                        #     if right_switch_pressed:
-                        #         self.stop_backward()
-                        #         # move forward a little bit -> rotate anticlockwise slightly -> then reverse back
-                        #         self.move_forward(distance=Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)  # TODO: change the values in here - calibrate
-                        #         self.rotate_anticlockwise(angle = ANGLES.rotate_collection_box_anticlockwise_degrees, speed = SPEED.rotate_to_adjust_box.value)
-                        #         self.start_backward(speed = SPEED.retreat_back.value)
-                                
-                        #     # get latest data for next iteration of loop
-                        #     left_switch_pressed = left_switch.check_being_pressed() 
-                        #     right_switch_pressed = right_switch.check_being_pressed()
-                        
-                        # # the limit_switch has been pressed
-
-                        # del limit_switch_left
-                        # del limit_switch_right
-                        """END Limit Switch Code """
-
+                            #     if right_switch_pressed:
+                            #         self.stop_backward()
+                            #         # move forward a little bit -> rotate anticlockwise slightly -> then reverse back
+                            #         self.move_forward(distance=Constants.collection_box_go_forward_adjust_dist.value, speed = SPEED.retreat_back.value)
+                            #         self.rotate_anticlockwise(angle = ANGLES.rotate_collection_box_anticlockwise_degrees, speed = SPEED.rotate_to_adjust_box.value)
+                            #         self.start_backward()
+                                    
+                            #     # get latest data for next iteration of loop
+                            #     left_switch_pressed = left_switch.check_being_pressed() 
+                            #     right_switch_pressed = right_switch.check_being_pressed()
+                            
+                            # # delete the instances
+                            # del limit_switch_left
+                            # del limit_switch_right
+                            # # the limit_switch has been pressed
+                            
+                            """END Limit Switch Code """
             
                         # <======== deposit the balls =====>
                         flap = Flap()
